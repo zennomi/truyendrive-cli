@@ -9,6 +9,28 @@ npm install
 npm run build
 ```
 
+## Publish
+
+For maintainers:
+
+```bash
+npm login
+npm version patch
+npm publish
+```
+
+After publish, anyone can run:
+
+```bash
+npx truyendrive-cli <directory>
+```
+
+If you want to verify the exact tarball before publishing:
+
+```bash
+npm pack --dry-run
+```
+
 ## Usage
 
 ```bash
