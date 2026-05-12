@@ -1,11 +1,15 @@
 export type ProcessingMode = "folder" | "subfolder";
 
+export const DEFAULT_KEY = "truyendrive";
+
 export interface CliOptions {
   directory: string;
   mode: ProcessingMode;
   key: string;
   batchSize: number;
   overwrite: boolean;
+  copyOtherFiles: boolean;
+  generatePasswordFile: boolean;
 }
 
 export interface ProcessingUnit {

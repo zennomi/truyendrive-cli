@@ -6,6 +6,7 @@ import sharp from "sharp";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli";
+import { xorNoiseRgba } from "../src/crypto";
 
 const tempDirectories: string[] = [];
 
@@ -26,11 +27,96 @@ describe("truyendrive-cli integration", () => {
     const exitCode = await runCli([root, "--batch-size", "2"], pushLog(logs), pushLog(logs));
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
-    const outputs = (await readdir(outputDir)).sort();
+    const outputs = (await readdir(outputDir)).filter((filename) => filename.endsWith(".png")).sort();
 
     expect(exitCode).toBe(0);
     expect(outputs).toEqual(["one.png", "two.png"]);
     expect(logs).toContain(`DONE ${root.split("/").pop()} (2 processed)`);
+  });
+
+  it("copies other files by default", async () => {
+    const root = await makeTempDir("copy-other");
+    await createPng(join(root, "one.png"), [255, 0, 0, 255]);
+    await writeFile(join(root, "notes.txt"), "keep me");
+    await writeFile(join(root, ".password.ignore.truyendrive"), "");
+
+    expect(await runCli([root], () => {}, () => {})).toBe(0);
+
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+
+    expect(await readFile(join(outputDir, "notes.txt"), "utf8")).toBe("keep me");
+    expect(await exists(join(outputDir, ".password.ignore.truyendrive"))).toBe(false);
+  });
+
+  it("does not copy other files when disabled", async () => {
+    const root = await makeTempDir("no-copy-other");
+    await createPng(join(root, "one.png"), [255, 0, 0, 255]);
+    await writeFile(join(root, "notes.txt"), "keep me");
+
+    expect(await runCli([root, "--no-copy-other-files"], () => {}, () => {})).toBe(0);
+
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+
+    expect(await exists(join(outputDir, "notes.txt"))).toBe(false);
+  });
+
+  it("uses a source password file key when no key is provided", async () => {
+    const root = await makeTempDir("password-key");
+    const originalRgba = Buffer.from([12, 34, 56, 255]);
+    await createPng(join(root, "one.png"), [12, 34, 56, 255]);
+    await writeFile(join(root, ".password.mysecret.truyendrive"), "");
+
+    expect(await runCli([root], () => {}, () => {})).toBe(0);
+
+    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "one.png");
+    const encryptedRgba = await readRawRgba(outputPath);
+    const expectedEncrypted = xorNoiseRgba(originalRgba, "mysecret");
+    const decryptedRgba = xorNoiseRgba(encryptedRgba, "mysecret");
+
+    expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
+    expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
+  });
+
+  it("prefers an explicit key over a source password file key", async () => {
+    const root = await makeTempDir("explicit-key");
+    const originalRgba = Buffer.from([12, 34, 56, 255]);
+    await createPng(join(root, "one.png"), [12, 34, 56, 255]);
+    await writeFile(join(root, ".password.filekey.truyendrive"), "");
+
+    expect(await runCli([root, "--key", "cli-key"], () => {}, () => {})).toBe(0);
+
+    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "one.png");
+    const encryptedRgba = await readRawRgba(outputPath);
+    const expectedEncrypted = xorNoiseRgba(originalRgba, "cli-key");
+
+    expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
+  });
+
+  it("generates a password file in destination by default", async () => {
+    const root = await makeTempDir("generate-password");
+    await createPng(join(root, "one.png"), [255, 0, 0, 255]);
+
+    expect(await runCli([root, "--key", "newsecret"], () => {}, () => {})).toBe(0);
+
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+
+    expect(await exists(join(outputDir, ".password.newsecret.truyendrive"))).toBe(true);
+  });
+
+  it("does not generate a password file when disabled", async () => {
+    const root = await makeTempDir("no-generate-password");
+    await createPng(join(root, "one.png"), [255, 0, 0, 255]);
+
+    expect(
+      await runCli([root, "--key", "newsecret", "--no-generate-password-file"], () => {}, () => {}),
+    ).toBe(0);
+
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+    const passwordFiles = (await readdir(outputDir)).filter((filename) =>
+      /^\.password\..+\.truyendrive$/.test(filename),
+    );
+
+    expect(passwordFiles).toEqual([]);
   });
 
   it("processes only immediate child directories in subfolder mode", async () => {
@@ -86,7 +172,7 @@ describe("truyendrive-cli integration", () => {
 
     expect(await runCli([root, "--overwrite"], pushLog(logs), pushLog(logs))).toBe(0);
 
-    const outputs = (await readdir(outputDir)).sort();
+    const outputs = (await readdir(outputDir)).filter((filename) => filename.endsWith(".png")).sort();
 
     expect(outputs).toEqual(["one.png", "two.png"]);
     expect(await exists(join(outputDir, "stale.png"))).toBe(false);
@@ -133,6 +219,10 @@ async function createPng(filePath: string, rgba: [number, number, number, number
   })
     .png()
     .toFile(filePath);
+}
+
+async function readRawRgba(filePath: string): Promise<Buffer> {
+  return sharp(filePath).ensureAlpha().raw().toBuffer();
 }
 
 async function exists(path: string): Promise<boolean> {

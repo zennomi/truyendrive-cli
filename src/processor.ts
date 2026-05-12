@@ -1,14 +1,17 @@
-import { mkdir, rm, stat } from "node:fs/promises";
+import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import sharp from "sharp";
 
 import { xorNoiseRgba } from "./crypto";
+import { DEFAULT_KEY } from "./types";
 import {
   countDestinationPngs,
   detectOutputCollisions,
+  findPasswordFile,
   getOutputFilename,
   listDestinationPngPaths,
+  listOtherFiles,
   listSupportedImages,
 } from "./units";
 import type { CliOptions, ProcessingUnit, UnitResult } from "./types";
@@ -96,11 +99,28 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     await mkdir(unit.destinationDir, { recursive: true });
     await clearDestinationPngs(unit.destinationDir);
 
+    const passwordFileKey = await findPasswordFile(unit.sourceDir);
+    const resolvedKey =
+      options.key !== DEFAULT_KEY ? options.key : passwordFileKey ?? options.key;
+
+    if (options.generatePasswordFile && passwordFileKey === null) {
+      await writeFile(join(unit.destinationDir, `.password.${resolvedKey}.truyendrive`), "");
+    }
+
     await runBounded(
       sourceFilenames,
       options.batchSize,
-      async (filename) => processSingleImage(unit, filename, options.key),
+      async (filename) => processSingleImage(unit, filename, resolvedKey),
     );
+
+    if (options.copyOtherFiles) {
+      const otherFiles = await listOtherFiles(unit.sourceDir);
+      await Promise.all(
+        otherFiles.map((filename) =>
+          copyFile(join(unit.sourceDir, filename), join(unit.destinationDir, filename)),
+        ),
+      );
+    }
 
     return {
       status: "done",

@@ -7,10 +7,9 @@ import { resolve } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 
 import { processUnits } from "./processor";
-import type { CliOptions, ProcessingMode } from "./types";
+import { DEFAULT_KEY, type CliOptions, type ProcessingMode } from "./types";
 import { discoverUnits } from "./units";
 
-const DEFAULT_KEY = "truyendrive";
 const DEFAULT_MODE: ProcessingMode = "folder";
 
 export function getDefaultBatchSize(): number {
@@ -26,6 +25,17 @@ export function parseCliArgs(argv: string[]): CliOptions {
     .argument("<directory>", "Source directory to process")
     .option("--mode <mode>", "Processing mode: folder or subfolder", DEFAULT_MODE)
     .option("--key <key>", "XOR-noise key", DEFAULT_KEY)
+    .option("--copy-other-files", "Copy non-image files to destination", true)
+    .option("--no-copy-other-files", "Do not copy non-image files to destination")
+    .option(
+      "--generate-password-file",
+      "Generate .password.<key>.truyendrive in destination if none found in source",
+      true,
+    )
+    .option(
+      "--no-generate-password-file",
+      "Do not generate .password.<key>.truyendrive in destination",
+    )
     .option(
       "--batch-size <number>",
       "Maximum concurrent image jobs within a processing unit",
@@ -42,6 +52,8 @@ export function parseCliArgs(argv: string[]): CliOptions {
     mode: string;
     key: string;
     batchSize: number;
+    copyOtherFiles: boolean;
+    generatePasswordFile: boolean;
   }>();
 
   if (options.mode !== "folder" && options.mode !== "subfolder") {
@@ -54,6 +66,8 @@ export function parseCliArgs(argv: string[]): CliOptions {
     key: options.key,
     batchSize: options.batchSize,
     overwrite,
+    copyOtherFiles: options.copyOtherFiles,
+    generatePasswordFile: options.generatePasswordFile,
   };
 }
 

@@ -24,6 +24,10 @@ export function isPngFile(filename: string): boolean {
   return filename.toLowerCase().endsWith(".png");
 }
 
+export function isPasswordFile(filename: string): boolean {
+  return /^\.password\.(.+)\.truyendrive$/.test(filename);
+}
+
 export function getOutputFilename(sourceFilename: string): string {
   const extensionIndex = sourceFilename.lastIndexOf(".");
   const basenameOnly =
@@ -35,6 +39,32 @@ export async function listSupportedImages(directory: string): Promise<string[]> 
   const entries = await readdir(directory, { withFileTypes: true });
   return entries
     .filter((entry) => entry.isFile() && isSupportedImageFile(entry.name))
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+}
+
+export async function findPasswordFile(directory: string): Promise<string | null> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const passwordFile = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right))
+    .find((filename) => isPasswordFile(filename));
+
+  if (!passwordFile) {
+    return null;
+  }
+
+  return passwordFile.match(/^\.password\.(.+)\.truyendrive$/)?.[1] ?? null;
+}
+
+export async function listOtherFiles(directory: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  return entries
+    .filter(
+      (entry) =>
+        entry.isFile() && !isSupportedImageFile(entry.name) && !isPasswordFile(entry.name),
+    )
     .map((entry) => entry.name)
     .sort((left, right) => left.localeCompare(right));
 }

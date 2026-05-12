@@ -10,9 +10,11 @@ describe("parseCliArgs", () => {
     expect(parsed.key).toBe("truyendrive");
     expect(parsed.batchSize).toBe(getDefaultBatchSize());
     expect(parsed.overwrite).toBe(false);
+    expect(parsed.copyOtherFiles).toBe(true);
+    expect(parsed.generatePasswordFile).toBe(true);
   });
 
-  it("accepts overwrite and mode flags", () => {
+  it("accepts overwrite, mode, and feature flags", () => {
     const parsed = parseCliArgs([
       "./input",
       "--mode",
@@ -21,6 +23,8 @@ describe("parseCliArgs", () => {
       "secret",
       "--batch-size",
       "2",
+      "--copy-other-files",
+      "--generate-password-file",
       "--overwrite",
     ]);
 
@@ -28,6 +32,20 @@ describe("parseCliArgs", () => {
     expect(parsed.key).toBe("secret");
     expect(parsed.batchSize).toBe(2);
     expect(parsed.overwrite).toBe(true);
+    expect(parsed.copyOtherFiles).toBe(true);
+    expect(parsed.generatePasswordFile).toBe(true);
+  });
+
+  it("accepts no-copy-other-files flag", () => {
+    const parsed = parseCliArgs(["./input", "--no-copy-other-files"]);
+
+    expect(parsed.copyOtherFiles).toBe(false);
+  });
+
+  it("accepts no-generate-password-file flag", () => {
+    const parsed = parseCliArgs(["./input", "--no-generate-password-file"]);
+
+    expect(parsed.generatePasswordFile).toBe(false);
   });
 
   it("rejects invalid batch size", () => {

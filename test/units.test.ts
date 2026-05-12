@@ -8,7 +8,9 @@ import {
   countDestinationPngs,
   detectOutputCollisions,
   discoverUnits,
+  findPasswordFile,
   getOutputFilename,
+  listOtherFiles,
   listSupportedImages,
 } from "../src/units";
 
@@ -79,6 +81,22 @@ describe("unit helpers", () => {
 
     expect(await listSupportedImages(root)).toEqual(["a.jpg", "b.png"]);
     expect(await countDestinationPngs(root)).toBe(1);
+  });
+
+  it("finds password file keys", async () => {
+    const root = await makeTempDir("password-file");
+    await writeFile(join(root, ".password.secret.truyendrive"), "");
+
+    expect(await findPasswordFile(root)).toBe("secret");
+  });
+
+  it("lists other files without images or password files", async () => {
+    const root = await makeTempDir("other-files");
+    await writeFile(join(root, "a.jpg"), "image");
+    await writeFile(join(root, "b.txt"), "text");
+    await writeFile(join(root, ".password.secret.truyendrive"), "");
+
+    expect(await listOtherFiles(root)).toEqual(["b.txt"]);
   });
 });
 
