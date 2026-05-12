@@ -1,6 +1,6 @@
 {
   "name": "truyendrive-cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Encrypt image folders into a sibling truyendrive directory using XOR noise.",
   "license": "MIT",
   "type": "commonjs",
