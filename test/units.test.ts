@@ -77,10 +77,20 @@ describe("unit helpers", () => {
     const root = await makeTempDir("images");
     await writeFile(join(root, "a.jpg"), "image");
     await writeFile(join(root, "b.png"), "image");
+    await writeFile(join(root, "c.heic"), "image");
     await writeFile(join(root, "ignored.txt"), "text");
 
-    expect(await listSupportedImages(root)).toEqual(["a.jpg", "b.png"]);
+    expect(await listSupportedImages(root)).toEqual(["a.jpg", "b.png", "c.heic"]);
     expect(await countDestinationPngs(root)).toBe(1);
+  });
+
+  it("treats .heif as a supported image", async () => {
+    const root = await makeTempDir("heif");
+    await writeFile(join(root, "photo.heif"), "image");
+    await writeFile(join(root, "doc.pdf"), "not-image");
+
+    expect(await listSupportedImages(root)).toEqual(["photo.heif"]);
+    expect(await listOtherFiles(root)).toEqual(["doc.pdf"]);
   });
 
   it("finds password file keys", async () => {

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli";
 import { xorNoiseRgba } from "../src/crypto";
+import { DEFAULT_KEY } from "../src/types";
 
 const tempDirectories: string[] = [];
 
@@ -46,6 +47,31 @@ describe("truyendrive-cli integration", () => {
 
     expect(await readFile(join(outputDir, "notes.txt"), "utf8")).toBe("keep me");
     expect(await exists(join(outputDir, ".password.ignore.truyendrive"))).toBe(false);
+  });
+
+  it.skipIf(!sharp.format.heif.output)("processes .heic source files and outputs png", async () => {
+    const root = await makeTempDir("heic");
+    const sourcePath = join(root, "photo.heic");
+    const rgba: [number, number, number, number] = [100, 150, 200, 255];
+    await sharp(Buffer.from(rgba), {
+      raw: {
+        width: 1,
+        height: 1,
+        channels: 4,
+      },
+    })
+      .heif({ compression: "av1" })
+      .toFile(sourcePath);
+
+    const exitCode = await runCli([root], () => {}, () => {});
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+
+    expect(exitCode).toBe(0);
+    expect(await exists(join(outputDir, "photo.png"))).toBe(true);
+
+    const encryptedRgba = await readRawRgba(join(outputDir, "photo.png"));
+    const expectedRgba = xorNoiseRgba(await readRawRgba(sourcePath), DEFAULT_KEY);
+    expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedRgba));
   });
 
   it("does not copy other files when disabled", async () => {

@@ -13,6 +13,8 @@ export const SUPPORTED_IMAGE_EXTENSIONS = new Set([
   ".tif",
   ".tiff",
   ".avif",
+  ".heic",
+  ".heif",
 ]);
 
 export function isSupportedImageFile(filename: string): boolean {
