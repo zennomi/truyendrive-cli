@@ -4,6 +4,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 
 import { xorNoiseRgba } from "./crypto";
+import { ProgressBar } from "./progress";
 import { DEFAULT_KEY } from "./types";
 import {
   countDestinationPngs,
@@ -30,12 +31,20 @@ export async function processUnits(
   logger: Logger = console.log,
 ): Promise<{ hasFailures: boolean; results: UnitResult[] }> {
   const results: UnitResult[] = [];
+  const overallProgress =
+    options.mode === "subfolder" && units.length > 1
+      ? new ProgressBar("[overall]", units.length, process.stderr, "units")
+      : null;
+  let completedUnits = 0;
 
   for (const unit of units) {
     const result = await processUnit({ unit, options, logger });
     results.push(result);
     logger(formatUnitResult(result));
+    overallProgress?.update(++completedUnits);
   }
+
+  overallProgress?.finish();
 
   return {
     hasFailures: results.some((result) => result.status === "fail"),
@@ -107,11 +116,20 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
       await writeFile(join(unit.destinationDir, `.password.${resolvedKey}.truyendrive`), "");
     }
 
-    await runBounded(
-      sourceFilenames,
-      options.batchSize,
-      async (filename) => processSingleImage(unit, filename, resolvedKey),
-    );
+    const progressBar = new ProgressBar(unit.label, sourceCount);
+    let completed = 0;
+
+    progressBar.update(completed);
+    try {
+      await runBounded(sourceFilenames, options.batchSize, async (filename) => {
+        await processSingleImage(unit, filename, resolvedKey);
+        progressBar.update(++completed);
+      });
+      progressBar.finish();
+    } catch (error) {
+      progressBar.clear();
+      throw error;
+    }
 
     if (options.copyOtherFiles) {
       const otherFiles = await listOtherFiles(unit.sourceDir);
