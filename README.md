@@ -34,7 +34,7 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--mode folder|subfolder] [--key KEY] [--batch-size N] [--overwrite]
+npx truyendrive-cli <directory> [--mode folder|subfolder] [--key KEY] [--batch-size N] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
@@ -42,9 +42,10 @@ Options:
 - `directory`: required source directory
 - `--mode`: `folder` or `subfolder`, defaults to `folder`
 - `--key`: PRNG seed key, defaults to `truyendrive`
+- `--copy-other-files` / `--no-copy-other-files`: copy non-image files to destination, defaults to `--copy-other-files`
+- `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`
 - `--batch-size`: maximum number of concurrent image jobs per unit
 - `--overwrite` / `--no-overwrite`: defaults to `--no-overwrite`
-
 ## Layout
 
 - `folder` mode writes to `parent(directory)/truyendrive/<directory-name>/`
