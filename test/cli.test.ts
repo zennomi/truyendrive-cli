@@ -6,6 +6,7 @@ describe("parseCliArgs", () => {
   it("applies defaults", () => {
     const parsed = parseCliArgs(["./input"]);
 
+    expect(parsed.action).toBe("encrypt");
     expect(parsed.mode).toBe("folder");
     expect(parsed.encryption).toBe("shuffle");
     expect(parsed.key).toBe("truyendrive");
@@ -13,6 +14,12 @@ describe("parseCliArgs", () => {
     expect(parsed.overwrite).toBe(false);
     expect(parsed.copyOtherFiles).toBe(true);
     expect(parsed.generatePasswordFile).toBe(true);
+  });
+
+  it("sets decrypt action when requested", () => {
+    const parsed = parseCliArgs(["./input", "--decrypt"]);
+
+    expect(parsed.action).toBe("decrypt");
   });
 
   it("accepts overwrite, mode, and feature flags", () => {

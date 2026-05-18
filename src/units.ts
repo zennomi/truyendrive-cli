@@ -107,10 +107,11 @@ export function detectOutputCollisions(filenames: string[]): string[] {
 export async function discoverUnits(
   directory: string,
   mode: ProcessingMode,
+  destinationSubPath = "truyendrive",
 ): Promise<ProcessingUnit[]> {
   const rootDirectory = resolve(directory);
   const rootName = basename(rootDirectory);
-  const baseDestination = join(dirname(rootDirectory), "truyendrive", rootName);
+  const baseDestination = join(dirname(rootDirectory), destinationSubPath, rootName);
 
   if (mode === "folder") {
     return [

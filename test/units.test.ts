@@ -48,6 +48,21 @@ describe("unit helpers", () => {
     ]);
   });
 
+  it("discovers folder mode destination layout with a custom destination subpath", async () => {
+    const root = await makeTempDir("custom-destination");
+    await writeFile(join(root, "a.png"), "image");
+
+    const units = await discoverUnits(root, "folder", "decrypted");
+
+    expect(units).toEqual([
+      {
+        label: basename(root),
+        sourceDir: root,
+        destinationDir: join(root, "..", "decrypted", basename(root)),
+      },
+    ]);
+  });
+
   it("discovers only immediate child directories in subfolder mode", async () => {
     const root = await makeTempDir("subfolder-mode");
     const childA = join(root, "a");

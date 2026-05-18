@@ -12,6 +12,8 @@ import { discoverUnits } from "./units";
 
 const DEFAULT_MODE: ProcessingMode = "folder";
 const DEFAULT_ENCRYPTION: EncryptionMethod = "shuffle";
+const ENCRYPT_DESTINATION_SUBPATH = "truyendrive";
+const DECRYPT_DESTINATION_SUBPATH = "decrypted";
 
 export function getDefaultBatchSize(): number {
   return Math.max(1, Math.min(os.availableParallelism(), 8));
@@ -29,6 +31,11 @@ export function parseCliArgs(argv: string[]): CliOptions {
       "--encryption <method>",
       "Encryption method: shuffle (preserves file size) or noise (legacy)",
       DEFAULT_ENCRYPTION,
+    )
+    .option(
+      "--decrypt",
+      "Reverse encryption for an already-encrypted truyendrive/ source directory",
+      false,
     )
     .option("--key <key>", "Encryption key", DEFAULT_KEY)
     .option("--copy-other-files", "Copy non-image files to destination", true)
@@ -57,6 +64,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
   const options = command.opts<{
     mode: string;
     encryption: string;
+    decrypt: boolean;
     key: string;
     batchSize: number;
     copyOtherFiles: boolean;
@@ -75,6 +83,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
 
   return {
     directory: resolve(directory),
+    action: options.decrypt ? "decrypt" : "encrypt",
     mode: options.mode,
     encryption: options.encryption,
     key: options.key,
@@ -93,7 +102,9 @@ export async function runCli(
   try {
     const options = parseCliArgs(argv);
     await validateDirectory(options.directory);
-    const units = await discoverUnits(options.directory, options.mode);
+    const destinationSubPath =
+      options.action === "decrypt" ? DECRYPT_DESTINATION_SUBPATH : ENCRYPT_DESTINATION_SUBPATH;
+    const units = await discoverUnits(options.directory, options.mode, destinationSubPath);
     const { hasFailures } = await processUnits(units, options, logger);
     return hasFailures ? 1 : 0;
   } catch (error) {

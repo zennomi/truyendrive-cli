@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import sharp from "sharp";
 
-import { shuffleRowsRgba, xorNoiseRgba } from "./crypto";
+import { shuffleRowsRgba, unshuffleRowsRgba, xorNoiseRgba } from "./crypto";
 import { ProgressBar } from "./progress";
 import { DEFAULT_KEY } from "./types";
 import {
@@ -11,11 +11,12 @@ import {
   detectOutputCollisions,
   findPasswordFile,
   getOutputFilename,
+  isPngFile,
   listDestinationPngPaths,
   listOtherFiles,
   listSupportedImages,
 } from "./units";
-import type { CliOptions, EncryptionMethod, ProcessingUnit, UnitResult } from "./types";
+import type { Action, CliOptions, EncryptionMethod, ProcessingUnit, UnitResult } from "./types";
 
 type Logger = (message: string) => void;
 
@@ -71,7 +72,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
   const { unit, options } = context;
 
   try {
-    const sourceFilenames = await listSupportedImages(unit.sourceDir);
+    const sourceFilenames = await listActionImages(unit.sourceDir, options.action);
     const sourceCount = sourceFilenames.length;
 
     if (sourceCount === 0) {
@@ -112,7 +113,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     const resolvedKey =
       options.key !== DEFAULT_KEY ? options.key : passwordFileKey ?? options.key;
 
-    if (options.generatePasswordFile && passwordFileKey === null) {
+    if (options.action === "encrypt" && options.generatePasswordFile && passwordFileKey === null) {
       await writeFile(join(unit.destinationDir, `.password.${resolvedKey}.truyendrive`), "");
     }
 
@@ -122,7 +123,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     progressBar.update(completed);
     try {
       await runBounded(sourceFilenames, options.batchSize, async (filename) => {
-        await processSingleImage(unit, filename, resolvedKey, options.encryption);
+        await processSingleImage(unit, filename, resolvedKey, options.encryption, options.action);
         progressBar.update(++completed);
       });
       progressBar.finish();
@@ -161,6 +162,7 @@ async function processSingleImage(
   filename: string,
   key: string,
   encryptionMethod: EncryptionMethod,
+  action: Action,
 ): Promise<void> {
   const sourcePath = join(unit.sourceDir, filename);
   const destinationPath = join(unit.destinationDir, getOutputFilename(filename));
@@ -173,7 +175,9 @@ async function processSingleImage(
   const encrypted =
     encryptionMethod === "noise"
       ? xorNoiseRgba(data, key)
-      : shuffleRowsRgba(data, info.width, info.height, info.channels, key);
+      : action === "decrypt"
+        ? unshuffleRowsRgba(data, info.width, info.height, info.channels, key)
+        : shuffleRowsRgba(data, info.width, info.height, info.channels, key);
 
   await sharp(encrypted, {
     raw: {
@@ -184,6 +188,15 @@ async function processSingleImage(
   })
     .png()
     .toFile(destinationPath);
+}
+
+async function listActionImages(directory: string, action: Action): Promise<string[]> {
+  const filenames = await listSupportedImages(directory);
+  if (action === "encrypt") {
+    return filenames;
+  }
+
+  return filenames.filter((filename) => isPngFile(filename));
 }
 
 async function clearDestinationPngs(directory: string): Promise<void> {

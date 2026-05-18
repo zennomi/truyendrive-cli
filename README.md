@@ -1,6 +1,6 @@
 # `truyendrive-cli`
 
-Encrypt images into a sibling `truyendrive/` directory using deterministic row shuffle encryption by default, with the legacy XOR-noise transform still available.
+Encrypt images into a sibling `truyendrive/` directory using deterministic row shuffle encryption by default, with the legacy XOR-noise transform still available. Encrypted folders can be decrypted back into a colocated `decrypted/` directory.
 
 ## Install
 
@@ -34,12 +34,13 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--mode folder|subfolder] [--encryption shuffle|noise] [--key KEY] [--batch-size N] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
+npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption shuffle|noise] [--key KEY] [--batch-size N] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
 
 - `directory`: required source directory
+- `--decrypt`: reverse encryption for an already-encrypted `truyendrive/<name>/` source directory
 - `--mode`: `folder` or `subfolder`, defaults to `folder`
 - `--encryption`: `shuffle` or `noise`, defaults to `shuffle`
 - `--key`: PRNG seed key, defaults to `truyendrive`
@@ -51,6 +52,7 @@ Options:
 
 - `folder` mode writes to `parent(directory)/truyendrive/<directory-name>/`
 - `subfolder` mode writes each immediate child folder to `parent(directory)/truyendrive/<directory-name>/<child-name>/`
+- decrypt mode writes to `parent(encrypted-directory)/decrypted/<encrypted-directory-name>/`
 
 Only supported image files are processed. Output filenames preserve the source basename and normalize the extension to `.png`.
 
