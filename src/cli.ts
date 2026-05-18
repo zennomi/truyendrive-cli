@@ -44,12 +44,12 @@ export function parseCliArgs(argv: string[]): CliOptions {
     .option("--no-copy-other-files", "Do not copy non-image files to destination")
     .option(
       "--generate-password-file",
-      "Generate .password.<key>.truyendrive in destination if none found in source",
+      "Generate .password.<key>.<method>.truyendrive in destination if none found in source",
       true,
     )
     .option(
       "--no-generate-password-file",
-      "Do not generate .password.<key>.truyendrive in destination",
+      "Do not generate .password.<key>.<method>.truyendrive in destination",
     )
     .option(
       "--batch-size <number>",

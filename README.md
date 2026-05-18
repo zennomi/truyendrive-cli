@@ -45,7 +45,7 @@ Options:
 - `--encryption`: `shuffle` or `noise`, defaults to `shuffle`
 - `--key`: PRNG seed key, defaults to `truyendrive`
 - `--copy-other-files` / `--no-copy-other-files`: copy non-image files to destination, defaults to `--copy-other-files`
-- `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`
+- `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.<method>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`
 - `--batch-size`: maximum number of concurrent image jobs per unit
 - `--compression-level`: PNG compression level from `0` to `9`, defaults to `6`
 - `--effort`: PNG encoder effort from `1` to `10`, defaults to `7`

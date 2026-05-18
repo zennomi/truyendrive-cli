@@ -27,7 +27,7 @@ export function isPngFile(filename: string): boolean {
 }
 
 export function isPasswordFile(filename: string): boolean {
-  return /^\.password\.(.+)\.truyendrive$/.test(filename);
+  return /^\.password\.(.+)\.(shuffle|noise)\.truyendrive$/.test(filename);
 }
 
 export function getOutputFilename(sourceFilename: string): string {
@@ -57,7 +57,7 @@ export async function findPasswordFile(directory: string): Promise<string | null
     return null;
   }
 
-  return passwordFile.match(/^\.password\.(.+)\.truyendrive$/)?.[1] ?? null;
+  return passwordFile.match(/^\.password\.(.+)\.(shuffle|noise)\.truyendrive$/)?.[1] ?? null;
 }
 
 export async function listOtherFiles(directory: string): Promise<string[]> {

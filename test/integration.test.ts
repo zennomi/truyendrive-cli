@@ -39,14 +39,14 @@ describe("truyendrive-cli integration", () => {
     const root = await makeTempDir("copy-other");
     await createPng(join(root, "one.png"), [255, 0, 0, 255]);
     await writeFile(join(root, "notes.txt"), "keep me");
-    await writeFile(join(root, ".password.ignore.truyendrive"), "");
+    await writeFile(join(root, ".password.ignore.shuffle.truyendrive"), "");
 
     expect(await runCli([root], () => {}, () => {})).toBe(0);
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
     expect(await readFile(join(outputDir, "notes.txt"), "utf8")).toBe("keep me");
-    expect(await exists(join(outputDir, ".password.ignore.truyendrive"))).toBe(false);
+    expect(await exists(join(outputDir, ".password.ignore.shuffle.truyendrive"))).toBe(false);
   });
 
   it("writes RGB PNG output when alpha is ignored", async () => {
@@ -108,7 +108,7 @@ describe("truyendrive-cli integration", () => {
     const root = await makeTempDir("password-key");
     const originalRgba = Buffer.from([12, 34, 56, 255]);
     await createPng(join(root, "one.png"), [12, 34, 56, 255]);
-    await writeFile(join(root, ".password.mysecret.truyendrive"), "");
+    await writeFile(join(root, ".password.mysecret.noise.truyendrive"), "");
 
     expect(await runCli([root, "--encryption", "noise"], () => {}, () => {})).toBe(0);
 
@@ -125,7 +125,7 @@ describe("truyendrive-cli integration", () => {
     const root = await makeTempDir("explicit-key");
     const originalRgba = Buffer.from([12, 34, 56, 255]);
     await createPng(join(root, "one.png"), [12, 34, 56, 255]);
-    await writeFile(join(root, ".password.filekey.truyendrive"), "");
+    await writeFile(join(root, ".password.filekey.noise.truyendrive"), "");
 
     expect(await runCli([root, "--key", "cli-key", "--encryption", "noise"], () => {}, () => {})).toBe(0);
 
@@ -220,7 +220,7 @@ describe("truyendrive-cli integration", () => {
     const decryptedDir = join(encryptedDir, "..", "decrypted", root.split("/").pop() as string);
 
     expect(await exists(join(decryptedDir, "one.png"))).toBe(true);
-    expect(await exists(join(decryptedDir, ".password.truyendrive.truyendrive"))).toBe(false);
+    expect(await exists(join(decryptedDir, ".password.truyendrive.shuffle.truyendrive"))).toBe(false);
   });
 
   it("auto-detects the key from a password file while decrypting", async () => {
@@ -252,7 +252,7 @@ describe("truyendrive-cli integration", () => {
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
-    expect(await exists(join(outputDir, ".password.newsecret.truyendrive"))).toBe(true);
+    expect(await exists(join(outputDir, ".password.newsecret.shuffle.truyendrive"))).toBe(true);
   });
 
   it("does not generate a password file when disabled", async () => {
@@ -265,7 +265,7 @@ describe("truyendrive-cli integration", () => {
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
     const passwordFiles = (await readdir(outputDir)).filter((filename) =>
-      /^\.password\..+\.truyendrive$/.test(filename),
+      /^\.password\..+\.(shuffle|noise)\.truyendrive$/.test(filename),
     );
 
     expect(passwordFiles).toEqual([]);

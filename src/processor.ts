@@ -130,7 +130,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
       passwordFileKey === null
     ) {
       await writeFile(
-        join(unit.destinationDir, `.password.${resolvedKey}.truyendrive`),
+        join(unit.destinationDir, `.password.${resolvedKey}.${options.encryption}.truyendrive`),
         "",
       );
     }

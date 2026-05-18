@@ -110,16 +110,23 @@ describe("unit helpers", () => {
 
   it("finds password file keys", async () => {
     const root = await makeTempDir("password-file");
-    await writeFile(join(root, ".password.secret.truyendrive"), "");
+    await writeFile(join(root, ".password.secret.noise.truyendrive"), "");
 
     expect(await findPasswordFile(root)).toBe("secret");
+  });
+
+  it("ignores legacy password filenames without an encryption method", async () => {
+    const root = await makeTempDir("legacy-password-file");
+    await writeFile(join(root, ".password.secret.truyendrive"), "");
+
+    expect(await findPasswordFile(root)).toBeNull();
   });
 
   it("lists other files without images or password files", async () => {
     const root = await makeTempDir("other-files");
     await writeFile(join(root, "a.jpg"), "image");
     await writeFile(join(root, "b.txt"), "text");
-    await writeFile(join(root, ".password.secret.truyendrive"), "");
+    await writeFile(join(root, ".password.secret.shuffle.truyendrive"), "");
 
     expect(await listOtherFiles(root)).toEqual(["b.txt"]);
   });
