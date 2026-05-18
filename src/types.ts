@@ -1,5 +1,5 @@
 export type ProcessingMode = "folder" | "subfolder";
-export type EncryptionMethod = "shuffle" | "noise";
+export type EncryptionMethod = "tiles" | "shuffle" | "noise";
 
 export const DEFAULT_KEY = "truyendrive";
 

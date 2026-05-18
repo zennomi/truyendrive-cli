@@ -60,6 +60,106 @@ export function buildRowPermutation(numRows: number, seed: number): Uint32Array 
   return permutation;
 }
 
+export const TILE_SIZE = 32;
+
+interface TilePosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function buildTilePermutation(
+  width: number,
+  height: number,
+  tileSize: number,
+  seed: number,
+): Uint32Array {
+  const tiles = buildTilePositions(width, height, tileSize);
+  const permutation = new Uint32Array(tiles.length);
+  const tileGroups = new Map<string, number[]>();
+
+  for (let index = 0; index < tiles.length; index += 1) {
+    permutation[index] = index;
+
+    const tile = tiles[index];
+    const groupKey = `${tile.width}x${tile.height}`;
+    const group = tileGroups.get(groupKey);
+    if (group) {
+      group.push(index);
+    } else {
+      tileGroups.set(groupKey, [index]);
+    }
+  }
+
+  for (const [groupKey, tileIndexes] of tileGroups) {
+    const groupPermutation = buildRowPermutation(tileIndexes.length, seed ^ cyrb128(groupKey));
+    for (let destinationIndex = 0; destinationIndex < tileIndexes.length; destinationIndex += 1) {
+      permutation[tileIndexes[destinationIndex]] = tileIndexes[groupPermutation[destinationIndex]];
+    }
+  }
+
+  return permutation;
+}
+
+export function shuffleTilesRgba(
+  input: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+  key: string,
+  tileSize = TILE_SIZE,
+): Buffer {
+  const rowByteLength = width * channels;
+  assertRawImageLength(input, rowByteLength, height);
+
+  const output = Buffer.alloc(input.length);
+  const tiles = buildTilePositions(width, height, tileSize);
+  const permutation = buildTilePermutation(width, height, tileSize, cyrb128(key));
+
+  for (let destinationTileIndex = 0; destinationTileIndex < tiles.length; destinationTileIndex += 1) {
+    copyTile(
+      input,
+      output,
+      tiles[permutation[destinationTileIndex]],
+      tiles[destinationTileIndex],
+      rowByteLength,
+      channels,
+    );
+  }
+
+  return output;
+}
+
+export function unshuffleTilesRgba(
+  input: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+  key: string,
+  tileSize = TILE_SIZE,
+): Buffer {
+  const rowByteLength = width * channels;
+  assertRawImageLength(input, rowByteLength, height);
+
+  const output = Buffer.alloc(input.length);
+  const tiles = buildTilePositions(width, height, tileSize);
+  const permutation = buildTilePermutation(width, height, tileSize, cyrb128(key));
+
+  for (let shuffledTileIndex = 0; shuffledTileIndex < tiles.length; shuffledTileIndex += 1) {
+    copyTile(
+      input,
+      output,
+      tiles[shuffledTileIndex],
+      tiles[permutation[shuffledTileIndex]],
+      rowByteLength,
+      channels,
+    );
+  }
+
+  return output;
+}
+
 export function shuffleRowsRgba(
   input: Uint8Array,
   width: number,
@@ -106,6 +206,40 @@ export function unshuffleRowsRgba(
   }
 
   return output;
+}
+
+function buildTilePositions(width: number, height: number, tileSize: number): TilePosition[] {
+  const tiles: TilePosition[] = [];
+
+  for (let y = 0; y < height; y += tileSize) {
+    for (let x = 0; x < width; x += tileSize) {
+      tiles.push({
+        x,
+        y,
+        width: Math.min(tileSize, width - x),
+        height: Math.min(tileSize, height - y),
+      });
+    }
+  }
+
+  return tiles;
+}
+
+function copyTile(
+  input: Uint8Array,
+  output: Buffer,
+  source: TilePosition,
+  destination: TilePosition,
+  rowByteLength: number,
+  channels: number,
+): void {
+  const bytesPerTileRow = source.width * channels;
+
+  for (let row = 0; row < source.height; row += 1) {
+    const sourceStart = (source.y + row) * rowByteLength + source.x * channels;
+    const destinationStart = (destination.y + row) * rowByteLength + destination.x * channels;
+    output.set(input.subarray(sourceStart, sourceStart + bytesPerTileRow), destinationStart);
+  }
 }
 
 function assertRawImageLength(input: Uint8Array, rowByteLength: number, height: number): void {
