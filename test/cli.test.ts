@@ -14,6 +14,9 @@ describe("parseCliArgs", () => {
     expect(parsed.overwrite).toBe(false);
     expect(parsed.copyOtherFiles).toBe(true);
     expect(parsed.generatePasswordFile).toBe(true);
+    expect(parsed.compressionLevel).toBe(6);
+    expect(parsed.effort).toBe(7);
+    expect(parsed.ignoreAlpha).toBe(false);
   });
 
   it("sets decrypt action when requested", () => {
@@ -33,6 +36,11 @@ describe("parseCliArgs", () => {
       "noise",
       "--batch-size",
       "2",
+      "--compression-level",
+      "9",
+      "--effort",
+      "10",
+      "--ignore-alpha",
       "--copy-other-files",
       "--generate-password-file",
       "--overwrite",
@@ -42,6 +50,9 @@ describe("parseCliArgs", () => {
     expect(parsed.encryption).toBe("noise");
     expect(parsed.key).toBe("secret");
     expect(parsed.batchSize).toBe(2);
+    expect(parsed.compressionLevel).toBe(9);
+    expect(parsed.effort).toBe(10);
+    expect(parsed.ignoreAlpha).toBe(true);
     expect(parsed.overwrite).toBe(true);
     expect(parsed.copyOtherFiles).toBe(true);
     expect(parsed.generatePasswordFile).toBe(true);
@@ -62,6 +73,27 @@ describe("parseCliArgs", () => {
   it("rejects invalid batch size", () => {
     expect(() => parseCliArgs(["./input", "--batch-size", "0"])).toThrow(
       'Expected a positive integer, received "0"',
+    );
+  });
+
+  it("rejects invalid compression level", () => {
+    expect(() => parseCliArgs(["./input", "--compression-level", "10"])).toThrow(
+      'Expected --compression-level to be an integer from 0 to 9, received "10"',
+    );
+    expect(() => parseCliArgs(["./input", "--compression-level", "3.5"])).toThrow(
+      'Expected --compression-level to be an integer from 0 to 9, received "3.5"',
+    );
+  });
+
+  it("rejects invalid effort", () => {
+    expect(() => parseCliArgs(["./input", "--effort", "0"])).toThrow(
+      'Expected --effort to be an integer from 1 to 10, received "0"',
+    );
+    expect(() => parseCliArgs(["./input", "--effort", "11"])).toThrow(
+      'Expected --effort to be an integer from 1 to 10, received "11"',
+    );
+    expect(() => parseCliArgs(["./input", "--effort", "3.5"])).toThrow(
+      'Expected --effort to be an integer from 1 to 10, received "3.5"',
     );
   });
 

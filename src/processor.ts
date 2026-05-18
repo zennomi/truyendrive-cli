@@ -16,7 +16,13 @@ import {
   listOtherFiles,
   listSupportedImages,
 } from "./units";
-import type { Action, CliOptions, EncryptionMethod, ProcessingUnit, UnitResult } from "./types";
+import type {
+  Action,
+  CliOptions,
+  EncryptionMethod,
+  ProcessingUnit,
+  UnitResult,
+} from "./types";
 
 type Logger = (message: string) => void;
 
@@ -72,7 +78,10 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
   const { unit, options } = context;
 
   try {
-    const sourceFilenames = await listActionImages(unit.sourceDir, options.action);
+    const sourceFilenames = await listActionImages(
+      unit.sourceDir,
+      options.action,
+    );
     const sourceCount = sourceFilenames.length;
 
     if (sourceCount === 0) {
@@ -111,10 +120,19 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
 
     const passwordFileKey = await findPasswordFile(unit.sourceDir);
     const resolvedKey =
-      options.key !== DEFAULT_KEY ? options.key : passwordFileKey ?? options.key;
+      options.key !== DEFAULT_KEY
+        ? options.key
+        : (passwordFileKey ?? options.key);
 
-    if (options.action === "encrypt" && options.generatePasswordFile && passwordFileKey === null) {
-      await writeFile(join(unit.destinationDir, `.password.${resolvedKey}.truyendrive`), "");
+    if (
+      options.action === "encrypt" &&
+      options.generatePasswordFile &&
+      passwordFileKey === null
+    ) {
+      await writeFile(
+        join(unit.destinationDir, `.password.${resolvedKey}.truyendrive`),
+        "",
+      );
     }
 
     const progressBar = new ProgressBar(unit.label, sourceCount);
@@ -123,7 +141,16 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     progressBar.update(completed);
     try {
       await runBounded(sourceFilenames, options.batchSize, async (filename) => {
-        await processSingleImage(unit, filename, resolvedKey, options.encryption, options.action);
+        await processSingleImage(
+          unit,
+          filename,
+          resolvedKey,
+          options.encryption,
+          options.action,
+          options.compressionLevel,
+          options.effort,
+          options.ignoreAlpha,
+        );
         progressBar.update(++completed);
       });
       progressBar.finish();
@@ -136,7 +163,10 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
       const otherFiles = await listOtherFiles(unit.sourceDir);
       await Promise.all(
         otherFiles.map((filename) =>
-          copyFile(join(unit.sourceDir, filename), join(unit.destinationDir, filename)),
+          copyFile(
+            join(unit.sourceDir, filename),
+            join(unit.destinationDir, filename),
+          ),
         ),
       );
     }
@@ -163,9 +193,15 @@ async function processSingleImage(
   key: string,
   encryptionMethod: EncryptionMethod,
   action: Action,
+  compressionLevel: number,
+  effort: number,
+  ignoreAlpha: boolean,
 ): Promise<void> {
   const sourcePath = join(unit.sourceDir, filename);
-  const destinationPath = join(unit.destinationDir, getOutputFilename(filename));
+  const destinationPath = join(
+    unit.destinationDir,
+    getOutputFilename(filename),
+  );
 
   const { data, info } = await sharp(sourcePath)
     .ensureAlpha()
@@ -179,18 +215,25 @@ async function processSingleImage(
         ? unshuffleRowsRgba(data, info.width, info.height, info.channels, key)
         : shuffleRowsRgba(data, info.width, info.height, info.channels, key);
 
-  await sharp(encrypted, {
+  let pipeline = sharp(encrypted, {
     raw: {
       width: info.width,
       height: info.height,
       channels: info.channels,
     },
-  })
-    .png()
-    .toFile(destinationPath);
+  }).png({ compressionLevel, effort });
+
+  if (ignoreAlpha) {
+    pipeline = pipeline.removeAlpha();
+  }
+
+  await pipeline.toFile(destinationPath);
 }
 
-async function listActionImages(directory: string, action: Action): Promise<string[]> {
+async function listActionImages(
+  directory: string,
+  action: Action,
+): Promise<string[]> {
   const filenames = await listSupportedImages(directory);
   if (action === "encrypt") {
     return filenames;

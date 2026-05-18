@@ -14,6 +14,9 @@ export interface CliOptions {
   overwrite: boolean;
   copyOtherFiles: boolean;
   generatePasswordFile: boolean;
+  compressionLevel: number;
+  effort: number;
+  ignoreAlpha: boolean;
 }
 
 export interface ProcessingUnit {

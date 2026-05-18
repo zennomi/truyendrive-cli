@@ -12,6 +12,8 @@ import { discoverUnits } from "./units";
 
 const DEFAULT_MODE: ProcessingMode = "folder";
 const DEFAULT_ENCRYPTION: EncryptionMethod = "shuffle";
+const DEFAULT_COMPRESSION_LEVEL = 6;
+const DEFAULT_EFFORT = 7;
 const ENCRYPT_DESTINATION_SUBPATH = "truyendrive";
 const DECRYPT_DESTINATION_SUBPATH = "decrypted";
 
@@ -55,6 +57,23 @@ export function parseCliArgs(argv: string[]): CliOptions {
       parsePositiveInteger,
       getDefaultBatchSize(),
     )
+    .option(
+      "--compression-level <number>",
+      "PNG compression level (0 = fastest/largest ... 9 = slowest/smallest)",
+      parseCompressionLevel,
+      DEFAULT_COMPRESSION_LEVEL,
+    )
+    .option(
+      "--effort <number>",
+      "PNG encoder effort from 1 to 10 (higher can improve compression)",
+      parseEffort,
+      DEFAULT_EFFORT,
+    )
+    .option(
+      "--ignore-alpha",
+      "Strip alpha channel (output 3-channel RGB PNGs, smaller file size)",
+      false,
+    )
     .allowExcessArguments(false)
     .exitOverride();
 
@@ -69,6 +88,9 @@ export function parseCliArgs(argv: string[]): CliOptions {
     batchSize: number;
     copyOtherFiles: boolean;
     generatePasswordFile: boolean;
+    compressionLevel: number;
+    effort: number;
+    ignoreAlpha: boolean;
   }>();
 
   if (options.mode !== "folder" && options.mode !== "subfolder") {
@@ -91,6 +113,9 @@ export function parseCliArgs(argv: string[]): CliOptions {
     overwrite,
     copyOtherFiles: options.copyOtherFiles,
     generatePasswordFile: options.generatePasswordFile,
+    compressionLevel: options.compressionLevel,
+    effort: options.effort,
+    ignoreAlpha: options.ignoreAlpha,
   };
 }
 
@@ -125,6 +150,25 @@ function parsePositiveInteger(value: string): number {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new InvalidArgumentError(`Expected a positive integer, received "${value}"`);
+  }
+  return parsed;
+}
+
+function parseCompressionLevel(value: string): number {
+  if (!/^[0-9]$/.test(value)) {
+    throw new InvalidArgumentError(
+      `Expected --compression-level to be an integer from 0 to 9, received "${value}"`,
+    );
+  }
+  return Number(value);
+}
+
+function parseEffort(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
+    throw new InvalidArgumentError(
+      `Expected --effort to be an integer from 1 to 10, received "${value}"`,
+    );
   }
   return parsed;
 }

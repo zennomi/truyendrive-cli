@@ -49,6 +49,24 @@ describe("truyendrive-cli integration", () => {
     expect(await exists(join(outputDir, ".password.ignore.truyendrive"))).toBe(false);
   });
 
+  it("writes RGB PNG output when alpha is ignored", async () => {
+    const root = await makeTempDir("ignore-alpha");
+    await createPng(join(root, "one.png"), [255, 0, 0, 128]);
+
+    expect(
+      await runCli(
+        [root, "--ignore-alpha", "--compression-level", "3", "--effort", "1"],
+        () => {},
+        () => {},
+      ),
+    ).toBe(0);
+
+    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "one.png");
+    const metadata = await sharp(outputPath).metadata();
+
+    expect(metadata.channels).toBe(3);
+  });
+
   it.skipIf(!sharp.format.heif.output)("processes .heic source files and outputs png", async () => {
     const root = await makeTempDir("heic");
     const sourcePath = join(root, "photo.heic");
