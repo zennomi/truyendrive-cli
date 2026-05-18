@@ -41,3 +41,76 @@ export function xorNoiseRgba(input: Uint8Array, key: string): Buffer {
 
   return output;
 }
+
+export function buildRowPermutation(numRows: number, seed: number): Uint32Array {
+  const permutation = new Uint32Array(numRows);
+  const rand = mulberry32(seed);
+
+  for (let index = 0; index < numRows; index += 1) {
+    permutation[index] = index;
+  }
+
+  for (let index = numRows - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(rand() * (index + 1));
+    const current = permutation[index];
+    permutation[index] = permutation[swapIndex];
+    permutation[swapIndex] = current;
+  }
+
+  return permutation;
+}
+
+export function shuffleRowsRgba(
+  input: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+  key: string,
+): Buffer {
+  const rowByteLength = width * channels;
+  assertRawImageLength(input, rowByteLength, height);
+
+  const output = Buffer.alloc(input.length);
+  const permutation = buildRowPermutation(height, cyrb128(key));
+
+  for (let destinationRow = 0; destinationRow < height; destinationRow += 1) {
+    const sourceRow = permutation[destinationRow];
+    output.set(
+      input.subarray(sourceRow * rowByteLength, (sourceRow + 1) * rowByteLength),
+      destinationRow * rowByteLength,
+    );
+  }
+
+  return output;
+}
+
+export function unshuffleRowsRgba(
+  input: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+  key: string,
+): Buffer {
+  const rowByteLength = width * channels;
+  assertRawImageLength(input, rowByteLength, height);
+
+  const output = Buffer.alloc(input.length);
+  const permutation = buildRowPermutation(height, cyrb128(key));
+
+  for (let shuffledRow = 0; shuffledRow < height; shuffledRow += 1) {
+    const originalRow = permutation[shuffledRow];
+    output.set(
+      input.subarray(shuffledRow * rowByteLength, (shuffledRow + 1) * rowByteLength),
+      originalRow * rowByteLength,
+    );
+  }
+
+  return output;
+}
+
+function assertRawImageLength(input: Uint8Array, rowByteLength: number, height: number): void {
+  const expectedLength = rowByteLength * height;
+  if (input.length !== expectedLength) {
+    throw new Error(`Expected raw image buffer length ${expectedLength}, received ${input.length}`);
+  }
+}

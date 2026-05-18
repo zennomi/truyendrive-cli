@@ -7,10 +7,11 @@ import { resolve } from "node:path";
 import { Command, InvalidArgumentError } from "commander";
 
 import { processUnits } from "./processor";
-import { DEFAULT_KEY, type CliOptions, type ProcessingMode } from "./types";
+import { DEFAULT_KEY, type CliOptions, type EncryptionMethod, type ProcessingMode } from "./types";
 import { discoverUnits } from "./units";
 
 const DEFAULT_MODE: ProcessingMode = "folder";
+const DEFAULT_ENCRYPTION: EncryptionMethod = "shuffle";
 
 export function getDefaultBatchSize(): number {
   return Math.max(1, Math.min(os.availableParallelism(), 8));
@@ -24,7 +25,12 @@ export function parseCliArgs(argv: string[]): CliOptions {
     .name("truyendrive-cli")
     .argument("<directory>", "Source directory to process")
     .option("--mode <mode>", "Processing mode: folder or subfolder", DEFAULT_MODE)
-    .option("--key <key>", "XOR-noise key", DEFAULT_KEY)
+    .option(
+      "--encryption <method>",
+      "Encryption method: shuffle (preserves file size) or noise (legacy)",
+      DEFAULT_ENCRYPTION,
+    )
+    .option("--key <key>", "Encryption key", DEFAULT_KEY)
     .option("--copy-other-files", "Copy non-image files to destination", true)
     .option("--no-copy-other-files", "Do not copy non-image files to destination")
     .option(
@@ -50,6 +56,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
   const [directory] = command.processedArgs as [string];
   const options = command.opts<{
     mode: string;
+    encryption: string;
     key: string;
     batchSize: number;
     copyOtherFiles: boolean;
@@ -60,9 +67,16 @@ export function parseCliArgs(argv: string[]): CliOptions {
     throw new InvalidArgumentError(`Expected --mode to be "folder" or "subfolder", received "${options.mode}"`);
   }
 
+  if (options.encryption !== "shuffle" && options.encryption !== "noise") {
+    throw new InvalidArgumentError(
+      `Expected --encryption to be "shuffle" or "noise", received "${options.encryption}"`,
+    );
+  }
+
   return {
     directory: resolve(directory),
     mode: options.mode,
+    encryption: options.encryption,
     key: options.key,
     batchSize: options.batchSize,
     overwrite,

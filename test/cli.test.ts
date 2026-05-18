@@ -7,6 +7,7 @@ describe("parseCliArgs", () => {
     const parsed = parseCliArgs(["./input"]);
 
     expect(parsed.mode).toBe("folder");
+    expect(parsed.encryption).toBe("shuffle");
     expect(parsed.key).toBe("truyendrive");
     expect(parsed.batchSize).toBe(getDefaultBatchSize());
     expect(parsed.overwrite).toBe(false);
@@ -21,6 +22,8 @@ describe("parseCliArgs", () => {
       "subfolder",
       "--key",
       "secret",
+      "--encryption",
+      "noise",
       "--batch-size",
       "2",
       "--copy-other-files",
@@ -29,6 +32,7 @@ describe("parseCliArgs", () => {
     ]);
 
     expect(parsed.mode).toBe("subfolder");
+    expect(parsed.encryption).toBe("noise");
     expect(parsed.key).toBe("secret");
     expect(parsed.batchSize).toBe(2);
     expect(parsed.overwrite).toBe(true);
@@ -51,6 +55,12 @@ describe("parseCliArgs", () => {
   it("rejects invalid batch size", () => {
     expect(() => parseCliArgs(["./input", "--batch-size", "0"])).toThrow(
       'Expected a positive integer, received "0"',
+    );
+  });
+
+  it("rejects invalid encryption method", () => {
+    expect(() => parseCliArgs(["./input", "--encryption", "unknown"])).toThrow(
+      'Expected --encryption to be "shuffle" or "noise", received "unknown"',
     );
   });
 });

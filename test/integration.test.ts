@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli";
-import { xorNoiseRgba } from "../src/crypto";
+import { shuffleRowsRgba, xorNoiseRgba } from "../src/crypto";
 import { DEFAULT_KEY } from "../src/types";
 
 const tempDirectories: string[] = [];
@@ -63,7 +63,7 @@ describe("truyendrive-cli integration", () => {
       .heif({ compression: "av1" })
       .toFile(sourcePath);
 
-    const exitCode = await runCli([root], () => {}, () => {});
+    const exitCode = await runCli([root, "--encryption", "noise"], () => {}, () => {});
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
     expect(exitCode).toBe(0);
@@ -92,7 +92,7 @@ describe("truyendrive-cli integration", () => {
     await createPng(join(root, "one.png"), [12, 34, 56, 255]);
     await writeFile(join(root, ".password.mysecret.truyendrive"), "");
 
-    expect(await runCli([root], () => {}, () => {})).toBe(0);
+    expect(await runCli([root, "--encryption", "noise"], () => {}, () => {})).toBe(0);
 
     const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "one.png");
     const encryptedRgba = await readRawRgba(outputPath);
@@ -109,11 +109,30 @@ describe("truyendrive-cli integration", () => {
     await createPng(join(root, "one.png"), [12, 34, 56, 255]);
     await writeFile(join(root, ".password.filekey.truyendrive"), "");
 
-    expect(await runCli([root, "--key", "cli-key"], () => {}, () => {})).toBe(0);
+    expect(await runCli([root, "--key", "cli-key", "--encryption", "noise"], () => {}, () => {})).toBe(0);
 
     const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "one.png");
     const encryptedRgba = await readRawRgba(outputPath);
     const expectedEncrypted = xorNoiseRgba(originalRgba, "cli-key");
+
+    expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
+  });
+
+  it("uses row shuffle encryption by default", async () => {
+    const root = await makeTempDir("shuffle-default");
+    const originalRgba = Buffer.from([
+      10, 11, 12, 255,
+      20, 21, 22, 255,
+      30, 31, 32, 255,
+      40, 41, 42, 255,
+    ]);
+    await createRawPng(join(root, "rows.png"), originalRgba, 1, 4);
+
+    expect(await runCli([root], () => {}, () => {})).toBe(0);
+
+    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "rows.png");
+    const encryptedRgba = await readRawRgba(outputPath);
+    const expectedEncrypted = shuffleRowsRgba(originalRgba, 1, 4, 4, DEFAULT_KEY);
 
     expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
   });
@@ -236,10 +255,14 @@ async function makeTempDir(prefix: string): Promise<string> {
 }
 
 async function createPng(filePath: string, rgba: [number, number, number, number]): Promise<void> {
-  await sharp(Buffer.from(rgba), {
+  await createRawPng(filePath, Buffer.from(rgba), 1, 1);
+}
+
+async function createRawPng(filePath: string, rgba: Buffer, width: number, height: number): Promise<void> {
+  await sharp(rgba, {
     raw: {
-      width: 1,
-      height: 1,
+      width,
+      height,
       channels: 4,
     },
   })

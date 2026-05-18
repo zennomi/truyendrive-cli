@@ -1,6 +1,6 @@
 # `truyendrive-cli`
 
-Encrypt images into a sibling `truyendrive/` directory using the XOR-noise transform from the provided browser example.
+Encrypt images into a sibling `truyendrive/` directory using deterministic row shuffle encryption by default, with the legacy XOR-noise transform still available.
 
 ## Install
 
@@ -34,13 +34,14 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--mode folder|subfolder] [--key KEY] [--batch-size N] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
+npx truyendrive-cli <directory> [--mode folder|subfolder] [--encryption shuffle|noise] [--key KEY] [--batch-size N] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
 
 - `directory`: required source directory
 - `--mode`: `folder` or `subfolder`, defaults to `folder`
+- `--encryption`: `shuffle` or `noise`, defaults to `shuffle`
 - `--key`: PRNG seed key, defaults to `truyendrive`
 - `--copy-other-files` / `--no-copy-other-files`: copy non-image files to destination, defaults to `--copy-other-files`
 - `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`

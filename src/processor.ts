@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import sharp from "sharp";
 
-import { xorNoiseRgba } from "./crypto";
+import { shuffleRowsRgba, xorNoiseRgba } from "./crypto";
 import { ProgressBar } from "./progress";
 import { DEFAULT_KEY } from "./types";
 import {
@@ -15,7 +15,7 @@ import {
   listOtherFiles,
   listSupportedImages,
 } from "./units";
-import type { CliOptions, ProcessingUnit, UnitResult } from "./types";
+import type { CliOptions, EncryptionMethod, ProcessingUnit, UnitResult } from "./types";
 
 type Logger = (message: string) => void;
 
@@ -122,7 +122,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     progressBar.update(completed);
     try {
       await runBounded(sourceFilenames, options.batchSize, async (filename) => {
-        await processSingleImage(unit, filename, resolvedKey);
+        await processSingleImage(unit, filename, resolvedKey, options.encryption);
         progressBar.update(++completed);
       });
       progressBar.finish();
@@ -160,6 +160,7 @@ async function processSingleImage(
   unit: ProcessingUnit,
   filename: string,
   key: string,
+  encryptionMethod: EncryptionMethod,
 ): Promise<void> {
   const sourcePath = join(unit.sourceDir, filename);
   const destinationPath = join(unit.destinationDir, getOutputFilename(filename));
@@ -169,7 +170,10 @@ async function processSingleImage(
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const encrypted = xorNoiseRgba(data, key);
+  const encrypted =
+    encryptionMethod === "noise"
+      ? xorNoiseRgba(data, key)
+      : shuffleRowsRgba(data, info.width, info.height, info.channels, key);
 
   await sharp(encrypted, {
     raw: {
