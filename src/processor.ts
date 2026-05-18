@@ -1,5 +1,6 @@
 import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 
 import sharp from "sharp";
 
@@ -37,6 +38,7 @@ export async function processUnits(
   options: CliOptions,
   logger: Logger = console.log,
 ): Promise<{ hasFailures: boolean; results: UnitResult[] }> {
+  const startTime = performance.now();
   const results: UnitResult[] = [];
   const overallProgress =
     options.mode === "subfolder" && units.length > 1
@@ -52,6 +54,10 @@ export async function processUnits(
   }
 
   overallProgress?.finish();
+
+  const elapsedMs = performance.now() - startTime;
+  const elapsedSecs = (elapsedMs / 1000).toFixed(2);
+  logger(`Total processing time: ${elapsedSecs}s`);
 
   return {
     hasFailures: results.some((result) => result.status === "fail"),
