@@ -8,15 +8,16 @@ import { shuffleRowsRgba, unshuffleRowsRgba, xorNoiseRgba } from "./crypto";
 import { ProgressBar } from "./progress";
 import { DEFAULT_KEY } from "./types";
 import {
-  countDestinationPngs,
+  countDestinationOutputs,
   detectOutputCollisions,
   findPasswordFile,
   getOutputFilename,
-  isPngFile,
-  listDestinationPngPaths,
+  isOutputFile,
+  listDestinationOutputPaths,
   listOtherFiles,
   listSupportedImages,
 } from "./units";
+import type { OutputFormat } from "./units";
 import type {
   Action,
   CliOptions,
@@ -70,7 +71,7 @@ export function formatUnitResult(result: UnitResult): string {
     case "done":
       return `DONE ${result.unit.label} (${result.processedCount ?? 0} processed)`;
     case "skip":
-      return `SKIP ${result.unit.label} (${result.sourceCount} source, ${result.destinationCount ?? 0} png outputs)`;
+      return `SKIP ${result.unit.label} (${result.sourceCount} source, ${result.destinationCount ?? 0} outputs)`;
     case "empty":
       return `EMPTY ${result.unit.label}`;
     case "fail":
@@ -82,11 +83,13 @@ export function formatUnitResult(result: UnitResult): string {
 
 async function processUnit(context: UnitContext): Promise<UnitResult> {
   const { unit, options } = context;
+  const format: OutputFormat = options.losslessWebp ? "webp" : "png";
 
   try {
     const sourceFilenames = await listActionImages(
       unit.sourceDir,
       options.action,
+      format,
     );
     const sourceCount = sourceFilenames.length;
 
@@ -98,19 +101,19 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
       };
     }
 
-    const collisions = detectOutputCollisions(sourceFilenames);
+    const collisions = detectOutputCollisions(sourceFilenames, format);
     if (collisions.length > 0) {
       return {
         status: "fail",
         unit,
         sourceCount,
-        reason: `basename collision after .png normalization: ${collisions.join(", ")}`,
+        reason: `basename collision after output normalization: ${collisions.join(", ")}`,
       };
     }
 
     const destinationExists = await pathExists(unit.destinationDir);
     if (!options.overwrite && destinationExists) {
-      const destinationCount = await countDestinationPngs(unit.destinationDir);
+      const destinationCount = await countDestinationOutputs(unit.destinationDir, format);
       if (destinationCount === sourceCount) {
         return {
           status: "skip",
@@ -122,7 +125,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     }
 
     await mkdir(unit.destinationDir, { recursive: true });
-    await clearDestinationPngs(unit.destinationDir);
+    await clearDestinationOutputs(unit.destinationDir, format);
 
     const passwordFileKey = await findPasswordFile(unit.sourceDir);
     const resolvedKey =
@@ -156,6 +159,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
           options.compressionLevel,
           options.effort,
           options.ignoreAlpha,
+          format,
         );
         progressBar.update(++completed);
       });
@@ -202,11 +206,12 @@ async function processSingleImage(
   compressionLevel: number,
   effort: number,
   ignoreAlpha: boolean,
+  format: OutputFormat,
 ): Promise<void> {
   const sourcePath = join(unit.sourceDir, filename);
   const destinationPath = join(
     unit.destinationDir,
-    getOutputFilename(filename),
+    getOutputFilename(filename, format),
   );
 
   const { data, info } = await sharp(sourcePath)
@@ -227,11 +232,16 @@ async function processSingleImage(
       height: info.height,
       channels: info.channels,
     },
-  }).png({ compressionLevel, effort });
+  });
 
   if (ignoreAlpha) {
     pipeline = pipeline.removeAlpha();
   }
+
+  pipeline =
+    format === "webp"
+      ? pipeline.webp({ lossless: true })
+      : pipeline.png({ compressionLevel, effort });
 
   await pipeline.toFile(destinationPath);
 }
@@ -239,18 +249,22 @@ async function processSingleImage(
 async function listActionImages(
   directory: string,
   action: Action,
+  format: OutputFormat,
 ): Promise<string[]> {
   const filenames = await listSupportedImages(directory);
   if (action === "encrypt") {
     return filenames;
   }
 
-  return filenames.filter((filename) => isPngFile(filename));
+  return filenames.filter((filename) => isOutputFile(filename, format));
 }
 
-async function clearDestinationPngs(directory: string): Promise<void> {
-  const pngPaths = await listDestinationPngPaths(directory);
-  await Promise.all(pngPaths.map((filePath) => rm(filePath, { force: true })));
+async function clearDestinationOutputs(
+  directory: string,
+  format: OutputFormat,
+): Promise<void> {
+  const outputPaths = await listDestinationOutputPaths(directory, format);
+  await Promise.all(outputPaths.map((filePath) => rm(filePath, { force: true })));
 }
 
 async function runBounded<T>(

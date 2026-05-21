@@ -34,7 +34,7 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption shuffle|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
+npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption shuffle|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--lossless-webp] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
@@ -49,7 +49,8 @@ Options:
 - `--batch-size`: maximum number of concurrent image jobs per unit
 - `--compression-level`: PNG compression level from `0` to `9`, defaults to `6`
 - `--effort`: PNG encoder effort from `1` to `10`, defaults to `7`
-- `--ignore-alpha`: strip the alpha channel and write 3-channel RGB PNG output
+- `--ignore-alpha`: strip the alpha channel and write 3-channel RGB output
+- `--lossless-webp`: output lossless WebP files instead of PNG files
 - `--overwrite` / `--no-overwrite`: defaults to `--no-overwrite`
 ## Layout
 
@@ -57,7 +58,7 @@ Options:
 - `subfolder` mode writes each immediate child folder to `parent(directory)/truyendrive/<directory-name>/<child-name>/`
 - decrypt mode writes to `parent(encrypted-directory)/decrypted/<encrypted-directory-name>/`
 
-Only supported image files are processed. Output filenames preserve the source basename and normalize the extension to `.png`.
+Only supported image files are processed. Output filenames preserve the source basename and normalize the extension to `.png` by default, or `.webp` with `--lossless-webp`.
 
 ## Development
 

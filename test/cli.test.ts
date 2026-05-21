@@ -17,6 +17,7 @@ describe("parseCliArgs", () => {
     expect(parsed.compressionLevel).toBe(6);
     expect(parsed.effort).toBe(7);
     expect(parsed.ignoreAlpha).toBe(false);
+    expect(parsed.losslessWebp).toBe(false);
   });
 
   it("sets decrypt action when requested", () => {
@@ -41,6 +42,7 @@ describe("parseCliArgs", () => {
       "--effort",
       "10",
       "--ignore-alpha",
+      "--lossless-webp",
       "--copy-other-files",
       "--generate-password-file",
       "--overwrite",
@@ -53,6 +55,7 @@ describe("parseCliArgs", () => {
     expect(parsed.compressionLevel).toBe(9);
     expect(parsed.effort).toBe(10);
     expect(parsed.ignoreAlpha).toBe(true);
+    expect(parsed.losslessWebp).toBe(true);
     expect(parsed.overwrite).toBe(true);
     expect(parsed.copyOtherFiles).toBe(true);
     expect(parsed.generatePasswordFile).toBe(true);

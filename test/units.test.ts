@@ -5,7 +5,7 @@ import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
-  countDestinationPngs,
+  countDestinationOutputs,
   detectOutputCollisions,
   discoverUnits,
   findPasswordFile,
@@ -27,6 +27,10 @@ afterEach(async () => {
 describe("unit helpers", () => {
   it("normalizes output filenames to png", () => {
     expect(getOutputFilename("chapter-01.jpg")).toBe("chapter-01.png");
+  });
+
+  it("normalizes output filenames to webp", () => {
+    expect(getOutputFilename("chapter-01.jpg", "webp")).toBe("chapter-01.webp");
   });
 
   it("detects basename collisions after png normalization", () => {
@@ -88,15 +92,17 @@ describe("unit helpers", () => {
     ]);
   });
 
-  it("lists supported images and counts png outputs", async () => {
+  it("lists supported images and counts outputs by format", async () => {
     const root = await makeTempDir("images");
     await writeFile(join(root, "a.jpg"), "image");
     await writeFile(join(root, "b.png"), "image");
+    await writeFile(join(root, "b.webp"), "image");
     await writeFile(join(root, "c.heic"), "image");
     await writeFile(join(root, "ignored.txt"), "text");
 
-    expect(await listSupportedImages(root)).toEqual(["a.jpg", "b.png", "c.heic"]);
-    expect(await countDestinationPngs(root)).toBe(1);
+    expect(await listSupportedImages(root)).toEqual(["a.jpg", "b.png", "b.webp", "c.heic"]);
+    expect(await countDestinationOutputs(root, "png")).toBe(1);
+    expect(await countDestinationOutputs(root, "webp")).toBe(1);
   });
 
   it("treats .heif as a supported image", async () => {

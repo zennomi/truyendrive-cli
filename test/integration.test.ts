@@ -35,6 +35,21 @@ describe("truyendrive-cli integration", () => {
     expect(logs).toContain(`DONE ${root.split("/").pop()} (2 processed)`);
   });
 
+  it("writes lossless webp outputs when requested", async () => {
+    const root = await makeTempDir("lossless-webp");
+    await createPng(join(root, "one.png"), [255, 0, 0, 255]);
+
+    const exitCode = await runCli([root, "--lossless-webp"], () => {}, () => {});
+
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+    const outputPath = join(outputDir, "one.webp");
+    const metadata = await sharp(outputPath).metadata();
+
+    expect(exitCode).toBe(0);
+    expect(await exists(join(outputDir, "one.png"))).toBe(false);
+    expect(metadata.format).toBe("webp");
+  });
+
   it("copies other files by default", async () => {
     const root = await makeTempDir("copy-other");
     await createPng(join(root, "one.png"), [255, 0, 0, 255]);
@@ -179,6 +194,37 @@ describe("truyendrive-cli integration", () => {
     expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
   });
 
+  it("round-trips shuffle encryption through lossless webp decrypt mode", async () => {
+    const root = await makeTempDir("webp-roundtrip");
+    const originalRgba = Buffer.from([
+      10, 11, 12, 255,
+      20, 21, 22, 255,
+      30, 31, 32, 255,
+      40, 41, 42, 255,
+    ]);
+    await createRawPng(join(root, "rows.png"), originalRgba, 1, 4);
+
+    expect(
+      await runCli([root, "--key", "shuffle-secret", "--lossless-webp"], () => {}, () => {}),
+    ).toBe(0);
+
+    const encryptedDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+
+    expect(await exists(join(encryptedDir, "rows.webp"))).toBe(true);
+    expect(
+      await runCli(
+        [encryptedDir, "--decrypt", "--key", "shuffle-secret", "--lossless-webp"],
+        () => {},
+        () => {},
+      ),
+    ).toBe(0);
+
+    const decryptedDir = join(encryptedDir, "..", "decrypted", root.split("/").pop() as string);
+    const decryptedRgba = await readRawRgba(join(decryptedDir, "rows.webp"));
+
+    expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
+  });
+
   it("round-trips noise encryption through decrypt mode", async () => {
     const root = await makeTempDir("noise-roundtrip");
     const originalRgba = Buffer.from([
@@ -307,7 +353,7 @@ describe("truyendrive-cli integration", () => {
 
     const secondLogs: string[] = [];
     expect(await runCli([root], pushLog(secondLogs), pushLog(secondLogs))).toBe(0);
-    expect(secondLogs).toContain(`SKIP ${root.split("/").pop()} (2 source, 2 png outputs)`);
+    expect(secondLogs).toContain(`SKIP ${root.split("/").pop()} (2 source, 2 outputs)`);
   });
 
   it("reprocesses outputs when overwrite is true and removes stale png files", async () => {

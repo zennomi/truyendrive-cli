@@ -17,6 +17,7 @@ export interface CliOptions {
   compressionLevel: number;
   effort: number;
   ignoreAlpha: boolean;
+  losslessWebp: boolean;
 }
 
 export interface ProcessingUnit {

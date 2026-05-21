@@ -3,6 +3,8 @@ import { basename, dirname, join, resolve } from "node:path";
 
 import type { ProcessingMode, ProcessingUnit } from "./types";
 
+export type OutputFormat = "png" | "webp";
+
 export const SUPPORTED_IMAGE_EXTENSIONS = new Set([
   ".jpg",
   ".jpeg",
@@ -22,19 +24,19 @@ export function isSupportedImageFile(filename: string): boolean {
   return SUPPORTED_IMAGE_EXTENSIONS.has(extension);
 }
 
-export function isPngFile(filename: string): boolean {
-  return filename.toLowerCase().endsWith(".png");
+export function isOutputFile(filename: string, format: OutputFormat): boolean {
+  return filename.toLowerCase().endsWith(`.${format}`);
 }
 
 export function isPasswordFile(filename: string): boolean {
   return /^\.password\.(.+)\.(shuffle|noise)\.truyendrive$/.test(filename);
 }
 
-export function getOutputFilename(sourceFilename: string): string {
+export function getOutputFilename(sourceFilename: string, format: OutputFormat = "png"): string {
   const extensionIndex = sourceFilename.lastIndexOf(".");
   const basenameOnly =
     extensionIndex === -1 ? sourceFilename : sourceFilename.slice(0, extensionIndex);
-  return `${basenameOnly}.png`;
+  return `${basenameOnly}.${format}`;
 }
 
 export async function listSupportedImages(directory: string): Promise<string[]> {
@@ -71,24 +73,33 @@ export async function listOtherFiles(directory: string): Promise<string[]> {
     .sort((left, right) => left.localeCompare(right));
 }
 
-export async function countDestinationPngs(directory: string): Promise<number> {
+export async function countDestinationOutputs(
+  directory: string,
+  format: OutputFormat,
+): Promise<number> {
   const entries = await readdir(directory, { withFileTypes: true });
-  return entries.filter((entry) => entry.isFile() && isPngFile(entry.name)).length;
+  return entries.filter((entry) => entry.isFile() && isOutputFile(entry.name, format)).length;
 }
 
-export async function listDestinationPngPaths(directory: string): Promise<string[]> {
+export async function listDestinationOutputPaths(
+  directory: string,
+  format: OutputFormat,
+): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
   return entries
-    .filter((entry) => entry.isFile() && isPngFile(entry.name))
+    .filter((entry) => entry.isFile() && isOutputFile(entry.name, format))
     .map((entry) => join(directory, entry.name));
 }
 
-export function detectOutputCollisions(filenames: string[]): string[] {
+export function detectOutputCollisions(
+  filenames: string[],
+  format: OutputFormat = "png",
+): string[] {
   const seen = new Map<string, string>();
   const collisions = new Set<string>();
 
   for (const filename of filenames) {
-    const target = getOutputFilename(filename);
+    const target = getOutputFilename(filename, format);
     const collisionKey = target.toLowerCase();
     const existing = seen.get(collisionKey);
 

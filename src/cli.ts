@@ -74,6 +74,11 @@ export function parseCliArgs(argv: string[]): CliOptions {
       "Strip alpha channel (output 3-channel RGB PNGs, smaller file size)",
       false,
     )
+    .option(
+      "--lossless-webp",
+      "Output as lossless WebP instead of PNG",
+      false,
+    )
     .allowExcessArguments(false)
     .exitOverride();
 
@@ -91,6 +96,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     compressionLevel: number;
     effort: number;
     ignoreAlpha: boolean;
+    losslessWebp: boolean;
   }>();
 
   if (options.mode !== "folder" && options.mode !== "subfolder") {
@@ -116,6 +122,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     compressionLevel: options.compressionLevel,
     effort: options.effort,
     ignoreAlpha: options.ignoreAlpha,
+    losslessWebp: options.losslessWebp,
   };
 }
 
