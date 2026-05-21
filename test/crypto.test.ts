@@ -1,10 +1,16 @@
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
 import {
   TILE_SIZE,
+  appendPackedWebpChunk,
   buildRowPermutation,
   buildTilePermutation,
+  createPackedCarrierRgb,
   cyrb128,
+  decryptPackedWebpPayload,
+  encryptPackedWebpPayload,
+  extractPackedWebpChunk,
   shuffleRowsRgba,
   shuffleTilesRgba,
   unshuffleRowsRgba,
@@ -38,6 +44,49 @@ describe("xorNoiseRgba", () => {
     expect(encrypted[3]).toBe(0);
     expect(encrypted[7]).toBe(127);
     expect(encrypted[11]).toBe(255);
+  });
+});
+
+describe("packed WebP helpers", () => {
+  it("encrypts and authenticates payloads", () => {
+    const source = Buffer.from("inner lossless webp bytes");
+    const encrypted = encryptPackedWebpPayload(source, "secret");
+    const decrypted = decryptPackedWebpPayload(encrypted, "secret");
+
+    expect(Buffer.compare(decrypted, source)).toBe(0);
+    expect(() => decryptPackedWebpPayload(encrypted, "wrong-secret")).toThrow(
+      "Packed WebP payload authentication failed",
+    );
+  });
+
+  it("appends and extracts a custom RIFF chunk while preserving WebP readability", async () => {
+    const webp = await sharp(Buffer.from([1, 2, 3]), {
+      raw: {
+        width: 1,
+        height: 1,
+        channels: 3,
+      },
+    })
+      .webp({ lossless: true })
+      .toBuffer();
+
+    const payload = Buffer.from("encrypted payload");
+    const packed = appendPackedWebpChunk(webp, payload);
+    const metadata = await sharp(packed).metadata();
+
+    expect(metadata.format).toBe("webp");
+    expect(metadata.width).toBe(1);
+    expect(metadata.height).toBe(1);
+    expect(extractPackedWebpChunk(packed).toString("utf8")).toBe("encrypted payload");
+  });
+
+  it("creates deterministic carrier pixels without using source pixels", () => {
+    const first = createPackedCarrierRgb(17, 17, "secret");
+    const second = createPackedCarrierRgb(17, 17, "secret");
+    const sourceLike = Buffer.alloc(17 * 17 * 3, 255);
+
+    expect(Array.from(first)).toEqual(Array.from(second));
+    expect(Buffer.compare(first, sourceLike)).not.toBe(0);
   });
 });
 

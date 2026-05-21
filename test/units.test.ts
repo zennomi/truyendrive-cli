@@ -121,6 +121,14 @@ describe("unit helpers", () => {
     expect(await findPasswordFile(root)).toBe("secret");
   });
 
+  it("finds packed and tiles password file keys", async () => {
+    const root = await makeTempDir("new-password-file-methods");
+    await writeFile(join(root, ".password.alpha.packed.truyendrive"), "");
+    await writeFile(join(root, ".password.beta.tiles.truyendrive"), "");
+
+    expect(await findPasswordFile(root)).toBe("alpha");
+  });
+
   it("ignores legacy password filenames without an encryption method", async () => {
     const root = await makeTempDir("legacy-password-file");
     await writeFile(join(root, ".password.secret.truyendrive"), "");

@@ -1,6 +1,6 @@
 # `truyendrive-cli`
 
-Encrypt images into a sibling `truyendrive/` directory using deterministic 32x32 tile shuffle encryption by default, with legacy row shuffle and XOR-noise transforms still available. Encrypted folders can be decrypted back into a colocated `decrypted/` directory.
+Encrypt images into a sibling `truyendrive/` directory using deterministic 32x32 tile shuffle encryption by default, with packed lossless WebP, legacy row shuffle, and XOR-noise transforms still available. Encrypted folders can be decrypted back into a colocated `decrypted/` directory.
 
 ## Install
 
@@ -34,7 +34,7 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption tiles|shuffle|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--lossless-webp] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
+npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption tiles|packed|shuffle|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--lossless-webp] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
@@ -42,7 +42,7 @@ Options:
 - `directory`: required source directory
 - `--decrypt`: reverse encryption for an already-encrypted `truyendrive/<name>/` source directory
 - `--mode`: `folder` or `subfolder`, defaults to `folder`
-- `--encryption`: `tiles`, `shuffle`, or `noise`, defaults to `tiles`. `tiles` shuffles 32x32 pixel blocks, `shuffle` performs legacy row shuffle, and `noise` performs legacy XOR noise.
+- `--encryption`: `tiles`, `packed`, `shuffle`, or `noise`, defaults to `tiles`. `tiles` shuffles 32x32 pixel blocks, `packed` writes a scrambled carrier WebP plus encrypted payload and requires `--lossless-webp`, `shuffle` performs legacy row shuffle, and `noise` performs legacy XOR noise.
 - `--key`: PRNG seed key, defaults to `truyendrive`
 - `--copy-other-files` / `--no-copy-other-files`: copy non-image files to destination, defaults to `--copy-other-files`
 - `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.<method>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`
@@ -52,6 +52,8 @@ Options:
 - `--ignore-alpha`: strip the alpha channel and write 3-channel RGB output
 - `--lossless-webp`: output lossless WebP files instead of PNG files
 - `--overwrite` / `--no-overwrite`: defaults to `--no-overwrite`
+
+Packed WebP outputs remain valid displayable images and preserve source dimensions, but their decryptable payload is stored in a custom WebP RIFF chunk. Tools that strip unknown WebP chunks can make packed outputs non-decryptable.
 ## Layout
 
 - `folder` mode writes to `parent(directory)/truyendrive/<directory-name>/`

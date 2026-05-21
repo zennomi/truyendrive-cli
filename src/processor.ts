@@ -1,10 +1,15 @@
-import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 
 import sharp from "sharp";
 
 import {
+  appendPackedWebpChunk,
+  createPackedCarrierRgb,
+  decryptPackedWebpPayload,
+  encryptPackedWebpPayload,
+  extractPackedWebpChunk,
   shuffleRowsRgba,
   shuffleTilesRgba,
   unshuffleRowsRgba,
@@ -220,6 +225,11 @@ async function processSingleImage(
     getOutputFilename(filename, format),
   );
 
+  if (encryptionMethod === "packed") {
+    await processPackedWebp(sourcePath, destinationPath, key, action, ignoreAlpha);
+    return;
+  }
+
   const { data, info } = await sharp(sourcePath)
     .ensureAlpha()
     .raw()
@@ -254,6 +264,60 @@ async function processSingleImage(
       : pipeline.png({ compressionLevel, effort, palette: false });
 
   await pipeline.toFile(destinationPath);
+}
+
+async function processPackedWebp(
+  sourcePath: string,
+  destinationPath: string,
+  key: string,
+  action: Action,
+  ignoreAlpha: boolean,
+): Promise<void> {
+  if (action === "decrypt") {
+    const sourceWebp = await readFile(sourcePath);
+    const payload = extractPackedWebpChunk(sourceWebp);
+    const innerWebp = decryptPackedWebpPayload(payload, key);
+    if (ignoreAlpha) {
+      await sharp(innerWebp).removeAlpha().webp({ lossless: true }).toFile(destinationPath);
+      return;
+    }
+
+    await writeFile(destinationPath, innerWebp);
+    return;
+  }
+
+  const { data, info } = await sharp(sourcePath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  let innerPipeline = sharp(data, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: info.channels,
+    },
+  });
+
+  if (ignoreAlpha) {
+    innerPipeline = innerPipeline.removeAlpha();
+  }
+
+  const innerWebp = await innerPipeline.webp({ lossless: true }).toBuffer();
+
+  const carrierRgb = createPackedCarrierRgb(info.width, info.height, key);
+  const carrierWebp = await sharp(carrierRgb, {
+    raw: {
+      width: info.width,
+      height: info.height,
+      channels: 3,
+    },
+  })
+    .webp({ lossless: true })
+    .toBuffer();
+
+  const encryptedPayload = encryptPackedWebpPayload(innerWebp, key);
+  await writeFile(destinationPath, appendPackedWebpChunk(carrierWebp, encryptedPayload));
 }
 
 async function listActionImages(

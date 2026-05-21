@@ -50,6 +50,52 @@ describe("truyendrive-cli integration", () => {
     expect(metadata.format).toBe("webp");
   });
 
+  it("writes packed lossless webp outputs with scrambled carrier pixels", async () => {
+    const root = await makeTempDir("packed-webp");
+    const originalRgba = createSmoothRgba(256, 256);
+    await createRawPng(join(root, "smooth.png"), originalRgba, 256, 256);
+
+    expect(
+      await runCli([root, "--lossless-webp", "--encryption", "tiles", "--key", "packed-secret"], () => {}, () => {}),
+    ).toBe(0);
+
+    const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+    const tiledOutputPath = join(outputDir, "smooth.webp");
+    const tiledSize = (await stat(tiledOutputPath)).size;
+
+    expect(
+      await runCli(
+        [root, "--overwrite", "--lossless-webp", "--encryption", "packed", "--key", "packed-secret"],
+        () => {},
+        () => {},
+      ),
+    ).toBe(0);
+
+    const packedOutputPath = join(outputDir, "smooth.webp");
+    const packedMetadata = await sharp(packedOutputPath).metadata();
+    const packedCarrierRgba = await readRawRgba(packedOutputPath);
+    const packedSize = (await stat(packedOutputPath)).size;
+
+    expect(packedMetadata.format).toBe("webp");
+    expect(packedMetadata.width).toBe(256);
+    expect(packedMetadata.height).toBe(256);
+    expect(Buffer.compare(packedCarrierRgba, originalRgba)).not.toBe(0);
+    expect(packedSize).toBeLessThan(tiledSize);
+
+    expect(
+      await runCli(
+        [outputDir, "--decrypt", "--lossless-webp", "--encryption", "packed", "--key", "packed-secret"],
+        () => {},
+        () => {},
+      ),
+    ).toBe(0);
+
+    const decryptedDir = join(outputDir, "..", "decrypted", root.split("/").pop() as string);
+    const decryptedRgba = await readRawRgba(join(decryptedDir, "smooth.webp"));
+
+    expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
+  });
+
   it("copies other files by default", async () => {
     const root = await makeTempDir("copy-other");
     await createPng(join(root, "one.png"), [255, 0, 0, 255]);
@@ -306,7 +352,7 @@ describe("truyendrive-cli integration", () => {
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
     const passwordFiles = (await readdir(outputDir)).filter((filename) =>
-      /^\.password\..+\.(shuffle|noise)\.truyendrive$/.test(filename),
+      /^\.password\..+\.(tiles|shuffle|noise|packed)\.truyendrive$/.test(filename),
     );
 
     expect(passwordFiles).toEqual([]);
@@ -448,6 +494,22 @@ function createTileIdRgba(width: number, height: number, tileSize: number): Buff
       output[offset] = tileIndex;
       output[offset + 1] = x % 256;
       output[offset + 2] = y % 256;
+      output[offset + 3] = 255;
+    }
+  }
+
+  return output;
+}
+
+function createSmoothRgba(width: number, height: number): Buffer {
+  const output = Buffer.alloc(width * height * 4);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      output[offset] = (x + y + Math.floor(25 * Math.sin(y / 11))) % 256;
+      output[offset + 1] = (2 * x + Math.floor(35 * Math.sin((x + y) / 19))) % 256;
+      output[offset + 2] = (3 * y + Math.floor(20 * Math.cos(x / 13))) % 256;
       output[offset + 3] = 255;
     }
   }

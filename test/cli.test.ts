@@ -61,6 +61,13 @@ describe("parseCliArgs", () => {
     expect(parsed.generatePasswordFile).toBe(true);
   });
 
+  it("accepts packed encryption with lossless webp", () => {
+    const parsed = parseCliArgs(["./input", "--encryption", "packed", "--lossless-webp"]);
+
+    expect(parsed.encryption).toBe("packed");
+    expect(parsed.losslessWebp).toBe(true);
+  });
+
   it("accepts no-copy-other-files flag", () => {
     const parsed = parseCliArgs(["./input", "--no-copy-other-files"]);
 
@@ -102,7 +109,13 @@ describe("parseCliArgs", () => {
 
   it("rejects invalid encryption method", () => {
     expect(() => parseCliArgs(["./input", "--encryption", "unknown"])).toThrow(
-      'Expected --encryption to be "tiles", "shuffle", or "noise", received "unknown"',
+      'Expected --encryption to be "tiles", "shuffle", "noise", or "packed", received "unknown"',
+    );
+  });
+
+  it("rejects packed encryption without lossless webp", () => {
+    expect(() => parseCliArgs(["./input", "--encryption", "packed"])).toThrow(
+      'Expected --lossless-webp when using --encryption "packed"',
     );
   });
 });

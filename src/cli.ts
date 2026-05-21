@@ -31,7 +31,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     .option("--mode <mode>", "Processing mode: folder or subfolder", DEFAULT_MODE)
     .option(
       "--encryption <method>",
-      "Encryption method: tiles (default), shuffle (legacy row shuffle), or noise (legacy)",
+      "Encryption method: tiles (default), packed (lossless WebP only), shuffle (legacy row shuffle), or noise (legacy)",
       DEFAULT_ENCRYPTION,
     )
     .option(
@@ -103,10 +103,19 @@ export function parseCliArgs(argv: string[]): CliOptions {
     throw new InvalidArgumentError(`Expected --mode to be "folder" or "subfolder", received "${options.mode}"`);
   }
 
-  if (options.encryption !== "tiles" && options.encryption !== "shuffle" && options.encryption !== "noise") {
+  if (
+    options.encryption !== "tiles" &&
+    options.encryption !== "shuffle" &&
+    options.encryption !== "noise" &&
+    options.encryption !== "packed"
+  ) {
     throw new InvalidArgumentError(
-      `Expected --encryption to be "tiles", "shuffle", or "noise", received "${options.encryption}"`,
+      `Expected --encryption to be "tiles", "shuffle", "noise", or "packed", received "${options.encryption}"`,
     );
+  }
+
+  if (options.encryption === "packed" && !options.losslessWebp) {
+    throw new InvalidArgumentError('Expected --lossless-webp when using --encryption "packed"');
   }
 
   return {
