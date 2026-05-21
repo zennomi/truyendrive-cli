@@ -4,7 +4,13 @@ import { performance } from "node:perf_hooks";
 
 import sharp from "sharp";
 
-import { shuffleRowsRgba, unshuffleRowsRgba, xorNoiseRgba } from "./crypto";
+import {
+  shuffleRowsRgba,
+  shuffleTilesRgba,
+  unshuffleRowsRgba,
+  unshuffleTilesRgba,
+  xorNoiseRgba,
+} from "./crypto";
 import { ProgressBar } from "./progress";
 import { DEFAULT_KEY } from "./types";
 import {
@@ -223,8 +229,12 @@ async function processSingleImage(
     encryptionMethod === "noise"
       ? xorNoiseRgba(data, key)
       : action === "decrypt"
-        ? unshuffleRowsRgba(data, info.width, info.height, info.channels, key)
-        : shuffleRowsRgba(data, info.width, info.height, info.channels, key);
+        ? encryptionMethod === "shuffle"
+          ? unshuffleRowsRgba(data, info.width, info.height, info.channels, key)
+          : unshuffleTilesRgba(data, info.width, info.height, info.channels, key)
+        : encryptionMethod === "shuffle"
+          ? shuffleRowsRgba(data, info.width, info.height, info.channels, key)
+          : shuffleTilesRgba(data, info.width, info.height, info.channels, key);
 
   let pipeline = sharp(encrypted, {
     raw: {
@@ -241,7 +251,7 @@ async function processSingleImage(
   pipeline =
     format === "webp"
       ? pipeline.webp({ lossless: true })
-      : pipeline.png({ compressionLevel, effort });
+      : pipeline.png({ compressionLevel, effort, palette: false });
 
   await pipeline.toFile(destinationPath);
 }

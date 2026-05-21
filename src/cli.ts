@@ -11,7 +11,7 @@ import { DEFAULT_KEY, type CliOptions, type EncryptionMethod, type ProcessingMod
 import { discoverUnits } from "./units";
 
 const DEFAULT_MODE: ProcessingMode = "folder";
-const DEFAULT_ENCRYPTION: EncryptionMethod = "shuffle";
+const DEFAULT_ENCRYPTION: EncryptionMethod = "tiles";
 const DEFAULT_COMPRESSION_LEVEL = 6;
 const DEFAULT_EFFORT = 7;
 const ENCRYPT_DESTINATION_SUBPATH = "truyendrive";
@@ -31,7 +31,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     .option("--mode <mode>", "Processing mode: folder or subfolder", DEFAULT_MODE)
     .option(
       "--encryption <method>",
-      "Encryption method: shuffle (preserves file size) or noise (legacy)",
+      "Encryption method: tiles (default), shuffle (legacy row shuffle), or noise (legacy)",
       DEFAULT_ENCRYPTION,
     )
     .option(
@@ -103,9 +103,9 @@ export function parseCliArgs(argv: string[]): CliOptions {
     throw new InvalidArgumentError(`Expected --mode to be "folder" or "subfolder", received "${options.mode}"`);
   }
 
-  if (options.encryption !== "shuffle" && options.encryption !== "noise") {
+  if (options.encryption !== "tiles" && options.encryption !== "shuffle" && options.encryption !== "noise") {
     throw new InvalidArgumentError(
-      `Expected --encryption to be "shuffle" or "noise", received "${options.encryption}"`,
+      `Expected --encryption to be "tiles", "shuffle", or "noise", received "${options.encryption}"`,
     );
   }
 

@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli";
-import { shuffleRowsRgba, xorNoiseRgba } from "../src/crypto";
+import { TILE_SIZE, shuffleRowsRgba, shuffleTilesRgba, xorNoiseRgba } from "../src/crypto";
 import { DEFAULT_KEY } from "../src/types";
 
 const tempDirectories: string[] = [];
@@ -151,21 +151,16 @@ describe("truyendrive-cli integration", () => {
     expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
   });
 
-  it("uses row shuffle encryption by default", async () => {
-    const root = await makeTempDir("shuffle-default");
-    const originalRgba = Buffer.from([
-      10, 11, 12, 255,
-      20, 21, 22, 255,
-      30, 31, 32, 255,
-      40, 41, 42, 255,
-    ]);
-    await createRawPng(join(root, "rows.png"), originalRgba, 1, 4);
+  it("uses tile shuffle encryption by default", async () => {
+    const root = await makeTempDir("tiles-default");
+    const originalRgba = createTileIdRgba(64, 64, TILE_SIZE);
+    await createRawPng(join(root, "tiles.png"), originalRgba, 64, 64);
 
     expect(await runCli([root], () => {}, () => {})).toBe(0);
 
-    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "rows.png");
+    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "tiles.png");
     const encryptedRgba = await readRawRgba(outputPath);
-    const expectedEncrypted = shuffleRowsRgba(originalRgba, 1, 4, 4, DEFAULT_KEY);
+    const expectedEncrypted = shuffleTilesRgba(originalRgba, 64, 64, 4, DEFAULT_KEY);
 
     expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
   });
@@ -298,7 +293,7 @@ describe("truyendrive-cli integration", () => {
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
-    expect(await exists(join(outputDir, ".password.newsecret.shuffle.truyendrive"))).toBe(true);
+    expect(await exists(join(outputDir, ".password.newsecret.tiles.truyendrive"))).toBe(true);
   });
 
   it("does not generate a password file when disabled", async () => {
@@ -440,4 +435,22 @@ function pushLog(target: string[]): (message: string) => void {
   return (message) => {
     target.push(message);
   };
+}
+
+function createTileIdRgba(width: number, height: number, tileSize: number): Buffer {
+  const output = Buffer.alloc(width * height * 4);
+  const tilesPerRow = Math.ceil(width / tileSize);
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const tileIndex = Math.floor(y / tileSize) * tilesPerRow + Math.floor(x / tileSize);
+      const offset = (y * width + x) * 4;
+      output[offset] = tileIndex;
+      output[offset + 1] = x % 256;
+      output[offset + 2] = y % 256;
+      output[offset + 3] = 255;
+    }
+  }
+
+  return output;
 }

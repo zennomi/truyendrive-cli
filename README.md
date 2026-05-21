@@ -1,6 +1,6 @@
 # `truyendrive-cli`
 
-Encrypt images into a sibling `truyendrive/` directory using deterministic row shuffle encryption by default, with the legacy XOR-noise transform still available. Encrypted folders can be decrypted back into a colocated `decrypted/` directory.
+Encrypt images into a sibling `truyendrive/` directory using deterministic 32x32 tile shuffle encryption by default, with legacy row shuffle and XOR-noise transforms still available. Encrypted folders can be decrypted back into a colocated `decrypted/` directory.
 
 ## Install
 
@@ -34,7 +34,7 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption shuffle|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--lossless-webp] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
+npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption tiles|shuffle|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--lossless-webp] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
@@ -42,7 +42,7 @@ Options:
 - `directory`: required source directory
 - `--decrypt`: reverse encryption for an already-encrypted `truyendrive/<name>/` source directory
 - `--mode`: `folder` or `subfolder`, defaults to `folder`
-- `--encryption`: `shuffle` or `noise`, defaults to `shuffle`
+- `--encryption`: `tiles`, `shuffle`, or `noise`, defaults to `tiles`. `tiles` shuffles 32x32 pixel blocks, `shuffle` performs legacy row shuffle, and `noise` performs legacy XOR noise.
 - `--key`: PRNG seed key, defaults to `truyendrive`
 - `--copy-other-files` / `--no-copy-other-files`: copy non-image files to destination, defaults to `--copy-other-files`
 - `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.<method>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`

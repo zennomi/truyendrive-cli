@@ -8,7 +8,7 @@ describe("parseCliArgs", () => {
 
     expect(parsed.action).toBe("encrypt");
     expect(parsed.mode).toBe("folder");
-    expect(parsed.encryption).toBe("shuffle");
+    expect(parsed.encryption).toBe("tiles");
     expect(parsed.key).toBe("truyendrive");
     expect(parsed.batchSize).toBe(getDefaultBatchSize());
     expect(parsed.overwrite).toBe(false);
@@ -34,7 +34,7 @@ describe("parseCliArgs", () => {
       "--key",
       "secret",
       "--encryption",
-      "noise",
+      "tiles",
       "--batch-size",
       "2",
       "--compression-level",
@@ -49,7 +49,7 @@ describe("parseCliArgs", () => {
     ]);
 
     expect(parsed.mode).toBe("subfolder");
-    expect(parsed.encryption).toBe("noise");
+    expect(parsed.encryption).toBe("tiles");
     expect(parsed.key).toBe("secret");
     expect(parsed.batchSize).toBe(2);
     expect(parsed.compressionLevel).toBe(9);
@@ -102,7 +102,7 @@ describe("parseCliArgs", () => {
 
   it("rejects invalid encryption method", () => {
     expect(() => parseCliArgs(["./input", "--encryption", "unknown"])).toThrow(
-      'Expected --encryption to be "shuffle" or "noise", received "unknown"',
+      'Expected --encryption to be "tiles", "shuffle", or "noise", received "unknown"',
     );
   });
 });
