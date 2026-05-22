@@ -17,7 +17,6 @@ describe("parseCliArgs", () => {
     expect(parsed.generatePasswordFile).toBe(true);
     expect(parsed.compressionLevel).toBe(6);
     expect(parsed.effort).toBe(7);
-    expect(parsed.ignoreAlpha).toBe(false);
   });
 
   it("sets decrypt action when requested", () => {
@@ -41,9 +40,7 @@ describe("parseCliArgs", () => {
       "9",
       "--effort",
       "10",
-      "--ignore-alpha",
       "--copy-other-files",
-      "--generate-password-file",
       "--overwrite",
     ]);
 
@@ -54,7 +51,6 @@ describe("parseCliArgs", () => {
     expect(parsed.batchSize).toBe(2);
     expect(parsed.compressionLevel).toBe(9);
     expect(parsed.effort).toBe(10);
-    expect(parsed.ignoreAlpha).toBe(true);
     expect(parsed.overwrite).toBe(true);
     expect(parsed.copyOtherFiles).toBe(true);
     expect(parsed.generatePasswordFile).toBe(true);
@@ -64,6 +60,12 @@ describe("parseCliArgs", () => {
     const parsed = parseCliArgs(["./input", "--no-copy-other-files"]);
 
     expect(parsed.copyOtherFiles).toBe(false);
+  });
+
+  it("accepts no-overwrite flag", () => {
+    const parsed = parseCliArgs(["./input", "--overwrite", "--no-overwrite"]);
+
+    expect(parsed.overwrite).toBe(false);
   });
 
   it("accepts no-generate-password-file flag", () => {

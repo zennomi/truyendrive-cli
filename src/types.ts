@@ -17,7 +17,6 @@ export interface CliOptions {
   generatePasswordFile: boolean;
   compressionLevel: number;
   effort: number;
-  ignoreAlpha: boolean;
 }
 
 export interface ProcessingUnit {

@@ -34,7 +34,7 @@ npm pack --dry-run
 ## Usage
 
 ```bash
-npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption scanline|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--ignore-alpha] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
+npx truyendrive-cli <directory> [--decrypt] [--mode folder|subfolder] [--encryption scanline|noise] [--key KEY] [--batch-size N] [--compression-level 0-9] [--effort 1-10] [--overwrite] [--no-copy-other-files] [--no-generate-password-file]
 ```
 
 Options:
@@ -45,11 +45,10 @@ Options:
 - `--encryption`: `scanline` or `noise`, defaults to `scanline`
 - `--key`: PRNG seed key, defaults to `truyendrive`
 - `--copy-other-files` / `--no-copy-other-files`: copy non-image files to destination, defaults to `--copy-other-files`
-- `--generate-password-file` / `--no-generate-password-file`: generate `.password.<key>.<method>.truyendrive` in destination if none found in source, defaults to `--generate-password-file`
+- `--no-generate-password-file`: disable generation of `.password.<key>.<method>.truyendrive` in destination if none found in source
 - `--batch-size`: maximum number of concurrent image jobs per unit
 - `--compression-level`: PNG compression level from `0` to `9`, defaults to `6`
 - `--effort`: PNG encoder effort from `1` to `10`, defaults to `7`
-- `--ignore-alpha`: strip the alpha channel and write 3-channel RGB PNG output
 - `--overwrite` / `--no-overwrite`: defaults to `--no-overwrite`
 ## Layout
 

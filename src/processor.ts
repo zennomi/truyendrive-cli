@@ -163,7 +163,6 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
           options.action,
           options.compressionLevel,
           options.effort,
-          options.ignoreAlpha,
         );
         progressBar.update(++completed);
       });
@@ -209,7 +208,6 @@ async function processSingleImage(
   action: Action,
   compressionLevel: number,
   effort: number,
-  ignoreAlpha: boolean,
 ): Promise<void> {
   const sourcePath = join(unit.sourceDir, filename);
   const destinationPath = join(
@@ -239,10 +237,6 @@ async function processSingleImage(
       channels: info.channels,
     },
   }).png({ compressionLevel, effort });
-
-  if (ignoreAlpha) {
-    pipeline = pipeline.removeAlpha();
-  }
 
   await pipeline.toFile(destinationPath);
 }

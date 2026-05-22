@@ -4,7 +4,7 @@ import { stat } from "node:fs/promises";
 import os from "node:os";
 import { resolve } from "node:path";
 
-import { Command, InvalidArgumentError } from "commander";
+import { Command, CommanderError, InvalidArgumentError, Option } from "commander";
 
 import { processUnits } from "./processor";
 import { DEFAULT_KEY, type CliOptions, type EncryptionMethod, type ProcessingMode } from "./types";
@@ -22,8 +22,7 @@ export function getDefaultBatchSize(): number {
 }
 
 export function parseCliArgs(argv: string[]): CliOptions {
-  const { overwrite, argv: sanitizedArgv } = extractOverwriteFlag(argv);
-  const encryptionExplicit = hasEncryptionFlag(sanitizedArgv);
+  const encryptionExplicit = hasEncryptionFlag(argv);
   const command = new Command();
 
   command
@@ -42,12 +41,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     )
     .option("--key <key>", "Encryption key", DEFAULT_KEY)
     .option("--copy-other-files", "Copy non-image files to destination", true)
-    .option("--no-copy-other-files", "Do not copy non-image files to destination")
-    .option(
-      "--generate-password-file",
-      "Generate .password.<key>.<method>.truyendrive in destination if none found in source",
-      true,
-    )
+    .addOption(new Option("--no-copy-other-files").hideHelp())
     .option(
       "--no-generate-password-file",
       "Do not generate .password.<key>.<method>.truyendrive in destination",
@@ -70,15 +64,12 @@ export function parseCliArgs(argv: string[]): CliOptions {
       parseEffort,
       DEFAULT_EFFORT,
     )
-    .option(
-      "--ignore-alpha",
-      "Strip alpha channel (output 3-channel RGB PNGs, smaller file size)",
-      false,
-    )
+    .option("--overwrite", "Overwrite existing files in the destination directory", false)
+    .addOption(new Option("--no-overwrite").hideHelp())
     .allowExcessArguments(false)
     .exitOverride();
 
-  command.parse(sanitizedArgv, { from: "user" });
+  command.parse(argv, { from: "user" });
 
   const [directory] = command.processedArgs as [string];
   const options = command.opts<{
@@ -91,7 +82,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     generatePasswordFile: boolean;
     compressionLevel: number;
     effort: number;
-    ignoreAlpha: boolean;
+    overwrite: boolean;
   }>();
 
   if (options.mode !== "folder" && options.mode !== "subfolder") {
@@ -112,12 +103,11 @@ export function parseCliArgs(argv: string[]): CliOptions {
     encryptionExplicit,
     key: options.key,
     batchSize: options.batchSize,
-    overwrite,
+    overwrite: options.overwrite,
     copyOtherFiles: options.copyOtherFiles,
     generatePasswordFile: options.generatePasswordFile,
     compressionLevel: options.compressionLevel,
     effort: options.effort,
-    ignoreAlpha: options.ignoreAlpha,
   };
 }
 
@@ -139,6 +129,10 @@ export async function runCli(
     const { hasFailures } = await processUnits(units, options, logger);
     return hasFailures ? 1 : 0;
   } catch (error) {
+    if (error instanceof CommanderError && error.code === "commander.helpDisplayed") {
+      return 0;
+    }
+
     const message = error instanceof Error ? error.message : String(error);
     errorLogger(message);
     return 1;
@@ -177,27 +171,6 @@ function parseEffort(value: string): number {
     );
   }
   return parsed;
-}
-
-function extractOverwriteFlag(argv: string[]): { argv: string[]; overwrite: boolean } {
-  let overwrite = false;
-  const sanitized: string[] = [];
-
-  for (const argument of argv) {
-    if (argument === "--overwrite") {
-      overwrite = true;
-      continue;
-    }
-
-    if (argument === "--no-overwrite") {
-      overwrite = false;
-      continue;
-    }
-
-    sanitized.push(argument);
-  }
-
-  return { argv: sanitized, overwrite };
 }
 
 function hasEncryptionFlag(argv: string[]): boolean {
