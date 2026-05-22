@@ -6,7 +6,7 @@ import sharp from "sharp";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runCli } from "../src/cli";
-import { shuffleRowsRgba, xorNoiseRgba } from "../src/crypto";
+import { scanlineScrambleRgba, xorNoiseRgba } from "../src/crypto";
 import { DEFAULT_KEY } from "../src/types";
 
 const tempDirectories: string[] = [];
@@ -39,14 +39,14 @@ describe("truyendrive-cli integration", () => {
     const root = await makeTempDir("copy-other");
     await createPng(join(root, "one.png"), [255, 0, 0, 255]);
     await writeFile(join(root, "notes.txt"), "keep me");
-    await writeFile(join(root, ".password.ignore.shuffle.truyendrive"), "");
+    await writeFile(join(root, ".password.ignore.noise.truyendrive"), "");
 
     expect(await runCli([root], () => {}, () => {})).toBe(0);
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
     expect(await readFile(join(outputDir, "notes.txt"), "utf8")).toBe("keep me");
-    expect(await exists(join(outputDir, ".password.ignore.shuffle.truyendrive"))).toBe(false);
+    expect(await exists(join(outputDir, ".password.ignore.noise.truyendrive"))).toBe(false);
   });
 
   it("writes RGB PNG output when alpha is ignored", async () => {
@@ -136,49 +136,6 @@ describe("truyendrive-cli integration", () => {
     expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
   });
 
-  it("uses row shuffle encryption by default", async () => {
-    const root = await makeTempDir("shuffle-default");
-    const originalRgba = Buffer.from([
-      10, 11, 12, 255,
-      20, 21, 22, 255,
-      30, 31, 32, 255,
-      40, 41, 42, 255,
-    ]);
-    await createRawPng(join(root, "rows.png"), originalRgba, 1, 4);
-
-    expect(await runCli([root], () => {}, () => {})).toBe(0);
-
-    const outputPath = join(root, "..", "truyendrive", root.split("/").pop() as string, "rows.png");
-    const encryptedRgba = await readRawRgba(outputPath);
-    const expectedEncrypted = shuffleRowsRgba(originalRgba, 1, 4, 4, DEFAULT_KEY);
-
-    expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
-  });
-
-  it("round-trips shuffle encryption through decrypt mode", async () => {
-    const root = await makeTempDir("shuffle-roundtrip");
-    const originalRgba = Buffer.from([
-      10, 11, 12, 255,
-      20, 21, 22, 255,
-      30, 31, 32, 255,
-      40, 41, 42, 255,
-    ]);
-    await createRawPng(join(root, "rows.png"), originalRgba, 1, 4);
-
-    expect(await runCli([root, "--key", "shuffle-secret"], () => {}, () => {})).toBe(0);
-
-    const encryptedDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
-
-    expect(
-      await runCli([encryptedDir, "--decrypt", "--key", "shuffle-secret"], () => {}, () => {}),
-    ).toBe(0);
-
-    const decryptedDir = join(encryptedDir, "..", "decrypted", root.split("/").pop() as string);
-    const decryptedRgba = await readRawRgba(join(decryptedDir, "rows.png"));
-
-    expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
-  });
-
   it("round-trips noise encryption through decrypt mode", async () => {
     const root = await makeTempDir("noise-roundtrip");
     const originalRgba = Buffer.from([
@@ -207,20 +164,29 @@ describe("truyendrive-cli integration", () => {
     expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
   });
 
-  it("writes decrypted output into a decrypted sibling under truyendrive", async () => {
-    const root = await makeTempDir("decrypt-destination");
-    await createPng(join(root, "one.png"), [12, 34, 56, 255]);
+  it("round-trips scanline encryption through decrypt mode", async () => {
+    const root = await makeTempDir("scanline-roundtrip");
+    const originalRgba = Buffer.from([
+      100, 110, 120, 255, 130, 140, 150, 255, 160, 170, 180, 255,
+      190, 200, 210, 255, 220, 230, 240, 128, 10, 20, 30, 64,
+    ]);
+    await createRawPng(join(root, "pixels.png"), originalRgba, 3, 2);
 
-    expect(await runCli([root], () => {}, () => {})).toBe(0);
+    expect(
+      await runCli([root, "--encryption", "scanline", "--key", "scanline-secret"], () => {}, () => {}),
+    ).toBe(0);
 
     const encryptedDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
+    const encryptedRgba = await readRawRgba(join(encryptedDir, "pixels.png"));
+    const expectedEncrypted = scanlineScrambleRgba(originalRgba, 3, 2, 4, "scanline-secret");
 
-    expect(await runCli([encryptedDir, "--decrypt"], () => {}, () => {})).toBe(0);
+    expect(Array.from(encryptedRgba)).toEqual(Array.from(expectedEncrypted));
+    expect(await runCli([encryptedDir, "--decrypt", "--key", "scanline-secret"], () => {}, () => {})).toBe(0);
 
     const decryptedDir = join(encryptedDir, "..", "decrypted", root.split("/").pop() as string);
+    const decryptedRgba = await readRawRgba(join(decryptedDir, "pixels.png"));
 
-    expect(await exists(join(decryptedDir, "one.png"))).toBe(true);
-    expect(await exists(join(decryptedDir, ".password.truyendrive.shuffle.truyendrive"))).toBe(false);
+    expect(Array.from(decryptedRgba)).toEqual(Array.from(originalRgba));
   });
 
   it("auto-detects the key from a password file while decrypting", async () => {
@@ -235,7 +201,7 @@ describe("truyendrive-cli integration", () => {
     const encryptedDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
     expect(
-      await runCli([encryptedDir, "--decrypt", "--encryption", "noise"], () => {}, () => {}),
+      await runCli([encryptedDir, "--decrypt"], () => {}, () => {}),
     ).toBe(0);
 
     const decryptedDir = join(encryptedDir, "..", "decrypted", root.split("/").pop() as string);
@@ -252,7 +218,7 @@ describe("truyendrive-cli integration", () => {
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
 
-    expect(await exists(join(outputDir, ".password.newsecret.shuffle.truyendrive"))).toBe(true);
+    expect(await exists(join(outputDir, ".password.newsecret.scanline.truyendrive"))).toBe(true);
   });
 
   it("does not generate a password file when disabled", async () => {
@@ -265,7 +231,7 @@ describe("truyendrive-cli integration", () => {
 
     const outputDir = join(root, "..", "truyendrive", root.split("/").pop() as string);
     const passwordFiles = (await readdir(outputDir)).filter((filename) =>
-      /^\.password\..+\.(shuffle|noise)\.truyendrive$/.test(filename),
+      /^\.password\..+\.(scanline|noise)\.truyendrive$/.test(filename),
     );
 
     expect(passwordFiles).toEqual([]);

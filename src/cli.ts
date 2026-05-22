@@ -11,7 +11,7 @@ import { DEFAULT_KEY, type CliOptions, type EncryptionMethod, type ProcessingMod
 import { discoverUnits } from "./units";
 
 const DEFAULT_MODE: ProcessingMode = "folder";
-const DEFAULT_ENCRYPTION: EncryptionMethod = "shuffle";
+const DEFAULT_ENCRYPTION: EncryptionMethod = "scanline";
 const DEFAULT_COMPRESSION_LEVEL = 6;
 const DEFAULT_EFFORT = 7;
 const ENCRYPT_DESTINATION_SUBPATH = "truyendrive";
@@ -23,6 +23,7 @@ export function getDefaultBatchSize(): number {
 
 export function parseCliArgs(argv: string[]): CliOptions {
   const { overwrite, argv: sanitizedArgv } = extractOverwriteFlag(argv);
+  const encryptionExplicit = hasEncryptionFlag(sanitizedArgv);
   const command = new Command();
 
   command
@@ -31,7 +32,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     .option("--mode <mode>", "Processing mode: folder or subfolder", DEFAULT_MODE)
     .option(
       "--encryption <method>",
-      "Encryption method: shuffle (preserves file size) or noise (legacy)",
+      "Encryption method: scanline or noise",
       DEFAULT_ENCRYPTION,
     )
     .option(
@@ -97,9 +98,9 @@ export function parseCliArgs(argv: string[]): CliOptions {
     throw new InvalidArgumentError(`Expected --mode to be "folder" or "subfolder", received "${options.mode}"`);
   }
 
-  if (options.encryption !== "shuffle" && options.encryption !== "noise") {
+  if (!isEncryptionMethod(options.encryption)) {
     throw new InvalidArgumentError(
-      `Expected --encryption to be "shuffle" or "noise", received "${options.encryption}"`,
+      `Expected --encryption to be "scanline" or "noise", received "${options.encryption}"`,
     );
   }
 
@@ -108,6 +109,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     action: options.decrypt ? "decrypt" : "encrypt",
     mode: options.mode,
     encryption: options.encryption,
+    encryptionExplicit,
     key: options.key,
     batchSize: options.batchSize,
     overwrite,
@@ -117,6 +119,10 @@ export function parseCliArgs(argv: string[]): CliOptions {
     effort: options.effort,
     ignoreAlpha: options.ignoreAlpha,
   };
+}
+
+function isEncryptionMethod(value: string): value is EncryptionMethod {
+  return value === "scanline" || value === "noise";
 }
 
 export async function runCli(
@@ -192,6 +198,10 @@ function extractOverwriteFlag(argv: string[]): { argv: string[]; overwrite: bool
   }
 
   return { argv: sanitized, overwrite };
+}
+
+function hasEncryptionFlag(argv: string[]): boolean {
+  return argv.some((argument) => argument === "--encryption" || argument.startsWith("--encryption="));
 }
 
 async function main(): Promise<void> {

@@ -1,5 +1,5 @@
 export type ProcessingMode = "folder" | "subfolder";
-export type EncryptionMethod = "shuffle" | "noise";
+export type EncryptionMethod = "scanline" | "noise";
 export type Action = "encrypt" | "decrypt";
 
 export const DEFAULT_KEY = "truyendrive";
@@ -9,6 +9,7 @@ export interface CliOptions {
   action: Action;
   mode: ProcessingMode;
   encryption: EncryptionMethod;
+  encryptionExplicit: boolean;
   key: string;
   batchSize: number;
   overwrite: boolean;

@@ -4,7 +4,11 @@ import { performance } from "node:perf_hooks";
 
 import sharp from "sharp";
 
-import { shuffleRowsRgba, unshuffleRowsRgba, xorNoiseRgba } from "./crypto";
+import {
+  scanlineScrambleRgba,
+  scanlineUnscrambleRgba,
+  xorNoiseRgba,
+} from "./crypto";
 import { ProgressBar } from "./progress";
 import { DEFAULT_KEY } from "./types";
 import {
@@ -124,19 +128,23 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
     await mkdir(unit.destinationDir, { recursive: true });
     await clearDestinationPngs(unit.destinationDir);
 
-    const passwordFileKey = await findPasswordFile(unit.sourceDir);
+    const passwordFile = await findPasswordFile(unit.sourceDir);
     const resolvedKey =
       options.key !== DEFAULT_KEY
         ? options.key
-        : (passwordFileKey ?? options.key);
+        : (passwordFile?.key ?? options.key);
+    const resolvedEncryption =
+      options.encryptionExplicit || !passwordFile
+        ? options.encryption
+        : passwordFile.encryption;
 
     if (
       options.action === "encrypt" &&
       options.generatePasswordFile &&
-      passwordFileKey === null
+      passwordFile === null
     ) {
       await writeFile(
-        join(unit.destinationDir, `.password.${resolvedKey}.${options.encryption}.truyendrive`),
+        join(unit.destinationDir, `.password.${resolvedKey}.${resolvedEncryption}.truyendrive`),
         "",
       );
     }
@@ -151,7 +159,7 @@ async function processUnit(context: UnitContext): Promise<UnitResult> {
           unit,
           filename,
           resolvedKey,
-          options.encryption,
+          resolvedEncryption,
           options.action,
           options.compressionLevel,
           options.effort,
@@ -214,12 +222,15 @@ async function processSingleImage(
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const encrypted =
-    encryptionMethod === "noise"
-      ? xorNoiseRgba(data, key)
-      : action === "decrypt"
-        ? unshuffleRowsRgba(data, info.width, info.height, info.channels, key)
-        : shuffleRowsRgba(data, info.width, info.height, info.channels, key);
+  const encrypted = transformRawImage(
+    data,
+    info.width,
+    info.height,
+    info.channels,
+    key,
+    encryptionMethod,
+    action,
+  );
 
   let pipeline = sharp(encrypted, {
     raw: {
@@ -234,6 +245,24 @@ async function processSingleImage(
   }
 
   await pipeline.toFile(destinationPath);
+}
+
+function transformRawImage(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+  key: string,
+  encryptionMethod: EncryptionMethod,
+  action: Action,
+): Buffer {
+  if (encryptionMethod === "noise") {
+    return xorNoiseRgba(data, key);
+  }
+
+  return action === "decrypt"
+    ? scanlineUnscrambleRgba(data, width, height, channels, key)
+    : scanlineScrambleRgba(data, width, height, channels, key);
 }
 
 async function listActionImages(

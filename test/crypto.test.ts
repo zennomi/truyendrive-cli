@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRowPermutation, cyrb128, shuffleRowsRgba, unshuffleRowsRgba, xorNoiseRgba } from "../src/crypto";
+import {
+  scanlineScrambleRgba,
+  scanlineUnscrambleRgba,
+  xorNoiseRgba,
+} from "../src/crypto";
 
 describe("xorNoiseRgba", () => {
   it("is reversible with the same key", () => {
@@ -31,49 +35,28 @@ describe("xorNoiseRgba", () => {
   });
 });
 
-describe("row shuffle encryption", () => {
-  it("builds a deterministic row permutation", () => {
-    const first = buildRowPermutation(8, 1234);
-    const second = buildRowPermutation(8, 1234);
-
-    expect(Array.from(first)).toEqual(Array.from(second));
-    expect(Array.from(first).sort((left, right) => left - right)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-  });
-
-  it("shuffles rows without changing bytes inside a row", () => {
+describe("scanline encryption", () => {
+  it("is deterministic with the same key and dimensions", () => {
     const source = Buffer.from([
-      10, 11, 12, 255,
-      20, 21, 22, 255,
-      30, 31, 32, 255,
-      40, 41, 42, 255,
+      10, 11, 12, 255, 20, 21, 22, 255, 30, 31, 32, 255,
+      40, 41, 42, 255, 50, 51, 52, 255, 60, 61, 62, 255,
     ]);
 
-    const shuffled = shuffleRowsRgba(source, 1, 4, 4, "secret");
-    const permutation = buildRowPermutation(4, cyrb128("secret"));
-    const rows = Array.from(permutation, (row) => Array.from(source.subarray(row * 4, row * 4 + 4)));
+    const first = scanlineScrambleRgba(source, 3, 2, 4, "secret");
+    const second = scanlineScrambleRgba(source, 3, 2, 4, "secret");
 
-    expect(chunkRows(shuffled, 4)).toEqual(rows);
+    expect(Array.from(first)).toEqual(Array.from(second));
   });
 
   it("is reversible with the same key", () => {
     const source = Buffer.from([
-      10, 11, 12, 255,
-      20, 21, 22, 128,
-      30, 31, 32, 64,
-      40, 41, 42, 0,
+      10, 11, 12, 255, 20, 21, 22, 255, 30, 31, 32, 255,
+      40, 41, 42, 255, 50, 51, 52, 128, 60, 61, 62, 0,
     ]);
 
-    const encrypted = shuffleRowsRgba(source, 1, 4, 4, "secret");
-    const decrypted = unshuffleRowsRgba(encrypted, 1, 4, 4, "secret");
+    const encrypted = scanlineScrambleRgba(source, 3, 2, 4, "secret");
+    const decrypted = scanlineUnscrambleRgba(encrypted, 3, 2, 4, "secret");
 
     expect(Buffer.compare(decrypted, source)).toBe(0);
   });
 });
-
-function chunkRows(input: Uint8Array, rowByteLength: number): number[][] {
-  const rows: number[][] = [];
-  for (let index = 0; index < input.length; index += rowByteLength) {
-    rows.push(Array.from(input.subarray(index, index + rowByteLength)));
-  }
-  return rows;
-}

@@ -42,67 +42,68 @@ export function xorNoiseRgba(input: Uint8Array, key: string): Buffer {
   return output;
 }
 
-export function buildRowPermutation(numRows: number, seed: number): Uint32Array {
-  const permutation = new Uint32Array(numRows);
-  const rand = mulberry32(seed);
-
-  for (let index = 0; index < numRows; index += 1) {
-    permutation[index] = index;
-  }
-
-  for (let index = numRows - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(rand() * (index + 1));
-    const current = permutation[index];
-    permutation[index] = permutation[swapIndex];
-    permutation[swapIndex] = current;
-  }
-
-  return permutation;
-}
-
-export function shuffleRowsRgba(
+export function scanlineScrambleRgba(
   input: Uint8Array,
   width: number,
   height: number,
   channels: number,
   key: string,
 ): Buffer {
-  const rowByteLength = width * channels;
-  assertRawImageLength(input, rowByteLength, height);
-
-  const output = Buffer.alloc(input.length);
-  const permutation = buildRowPermutation(height, cyrb128(key));
-
-  for (let destinationRow = 0; destinationRow < height; destinationRow += 1) {
-    const sourceRow = permutation[destinationRow];
-    output.set(
-      input.subarray(sourceRow * rowByteLength, (sourceRow + 1) * rowByteLength),
-      destinationRow * rowByteLength,
-    );
-  }
-
-  return output;
+  return transformScanlinesRgba(input, width, height, channels, key, "scramble");
 }
 
-export function unshuffleRowsRgba(
+export function scanlineUnscrambleRgba(
   input: Uint8Array,
   width: number,
   height: number,
   channels: number,
   key: string,
 ): Buffer {
+  return transformScanlinesRgba(input, width, height, channels, key, "unscramble");
+}
+
+function transformScanlinesRgba(
+  input: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+  key: string,
+  direction: "scramble" | "unscramble",
+): Buffer {
   const rowByteLength = width * channels;
   assertRawImageLength(input, rowByteLength, height);
 
   const output = Buffer.alloc(input.length);
-  const permutation = buildRowPermutation(height, cyrb128(key));
+  const rand = mulberry32(cyrb128(`${key}:${width}x${height}:${channels}:scanline`));
 
-  for (let shuffledRow = 0; shuffledRow < height; shuffledRow += 1) {
-    const originalRow = permutation[shuffledRow];
-    output.set(
-      input.subarray(shuffledRow * rowByteLength, (shuffledRow + 1) * rowByteLength),
-      originalRow * rowByteLength,
-    );
+  for (let row = 0; row < height; row += 1) {
+    const offset = width === 0 ? 0 : Math.floor(rand() * width);
+    const reverse = rand() >= 0.5;
+
+    for (let destinationColumn = 0; destinationColumn < width; destinationColumn += 1) {
+      const transformedColumn =
+        direction === "scramble"
+          ? destinationColumn
+          : reverse
+            ? width - 1 - destinationColumn
+            : destinationColumn;
+      const rolledColumn =
+        direction === "scramble"
+          ? (destinationColumn - offset + width) % width
+          : (transformedColumn + offset) % width;
+      const sourceColumn =
+        direction === "scramble" && reverse
+          ? width - 1 - rolledColumn
+          : rolledColumn;
+
+      output.set(
+        input.subarray(
+          row * rowByteLength + sourceColumn * channels,
+          row * rowByteLength + (sourceColumn + 1) * channels,
+        ),
+        row * rowByteLength + destinationColumn * channels,
+      );
+    }
   }
 
   return output;

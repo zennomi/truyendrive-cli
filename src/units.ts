@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
-import type { ProcessingMode, ProcessingUnit } from "./types";
+import type { EncryptionMethod, ProcessingMode, ProcessingUnit } from "./types";
 
 export const SUPPORTED_IMAGE_EXTENSIONS = new Set([
   ".jpg",
@@ -17,6 +17,13 @@ export const SUPPORTED_IMAGE_EXTENSIONS = new Set([
   ".heif",
 ]);
 
+const PASSWORD_FILE_PATTERN = /^\.password\.(.+)\.(scanline|noise)\.truyendrive$/;
+
+export interface PasswordFileInfo {
+  key: string;
+  encryption: EncryptionMethod;
+}
+
 export function isSupportedImageFile(filename: string): boolean {
   const extension = filename.slice(filename.lastIndexOf(".")).toLowerCase();
   return SUPPORTED_IMAGE_EXTENSIONS.has(extension);
@@ -27,7 +34,7 @@ export function isPngFile(filename: string): boolean {
 }
 
 export function isPasswordFile(filename: string): boolean {
-  return /^\.password\.(.+)\.(shuffle|noise)\.truyendrive$/.test(filename);
+  return PASSWORD_FILE_PATTERN.test(filename);
 }
 
 export function getOutputFilename(sourceFilename: string): string {
@@ -45,7 +52,7 @@ export async function listSupportedImages(directory: string): Promise<string[]> 
     .sort((left, right) => left.localeCompare(right));
 }
 
-export async function findPasswordFile(directory: string): Promise<string | null> {
+export async function findPasswordFile(directory: string): Promise<PasswordFileInfo | null> {
   const entries = await readdir(directory, { withFileTypes: true });
   const passwordFile = entries
     .filter((entry) => entry.isFile())
@@ -57,7 +64,15 @@ export async function findPasswordFile(directory: string): Promise<string | null
     return null;
   }
 
-  return passwordFile.match(/^\.password\.(.+)\.(shuffle|noise)\.truyendrive$/)?.[1] ?? null;
+  const match = passwordFile.match(PASSWORD_FILE_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    key: match[1],
+    encryption: match[2] as EncryptionMethod,
+  };
 }
 
 export async function listOtherFiles(directory: string): Promise<string[]> {

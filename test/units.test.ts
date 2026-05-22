@@ -112,7 +112,22 @@ describe("unit helpers", () => {
     const root = await makeTempDir("password-file");
     await writeFile(join(root, ".password.secret.noise.truyendrive"), "");
 
-    expect(await findPasswordFile(root)).toBe("secret");
+    expect(await findPasswordFile(root)).toEqual({
+      key: "secret",
+      encryption: "noise",
+    });
+  });
+
+  it("recognizes all password file encryption methods", async () => {
+    for (const encryption of ["scanline", "noise"] as const) {
+      const root = await makeTempDir(`password-file-${encryption}`);
+      await writeFile(join(root, `.password.secret.${encryption}.truyendrive`), "");
+
+      expect(await findPasswordFile(root)).toEqual({
+        key: "secret",
+        encryption,
+      });
+    }
   });
 
   it("ignores legacy password filenames without an encryption method", async () => {
@@ -126,7 +141,7 @@ describe("unit helpers", () => {
     const root = await makeTempDir("other-files");
     await writeFile(join(root, "a.jpg"), "image");
     await writeFile(join(root, "b.txt"), "text");
-    await writeFile(join(root, ".password.secret.shuffle.truyendrive"), "");
+    await writeFile(join(root, ".password.secret.scanline.truyendrive"), "");
 
     expect(await listOtherFiles(root)).toEqual(["b.txt"]);
   });
