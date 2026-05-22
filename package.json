@@ -1,6 +1,6 @@
 {
   "name": "truyendrive-cli",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Encrypt image folders into a sibling truyendrive directory.",
   "license": "MIT",
   "type": "commonjs",
